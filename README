@@ -6,9 +6,9 @@ Version: 0.01
 
 This is a Python implementation of LSPI from Lagoudakis and Parr in
 JMLR (2003). The code depends on having an environment that provides a
-function phi for generating features from state action pairs, and a
+function phi for generating features from state-action pairs, and a
 function linear_policy for evaluating the policy. The gridworld
 package (https://github.com/stober/gridworld) provides example
 environments. Both lspi.py and lstdq.py contain example code using a
-simple chainworld environment from the original paper (include in the
+simple chainworld environment from the original paper (included in the
 gridworld package).
