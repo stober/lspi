@@ -15,7 +15,7 @@ import numpy.linalg as la
 
 def LSTDQ(D,env,w):
     """
-    D : source of samples (s,a,r,s')
+    D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
     """
@@ -27,7 +27,7 @@ def LSTDQ(D,env,w):
     b = np.zeros(k)
 
     i = 0
-    for (s,a,r,ns) in D:
+    for (s,a,r,ns,na) in D:
 
         #print i
         i += 1
@@ -55,4 +55,6 @@ if __name__ == '__main__':
     cw = Chainwalk()
     t = cw.trace(1000)
     policy0 = np.zeros(cw.nfeatures)
+    import pdb
+    pdb.set_trace()
     print LSTDQ(t, cw, policy0)
