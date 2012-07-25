@@ -49,12 +49,4 @@ def LSTDQ(D,env,w):
 
 if __name__ == '__main__':
 
-    # For the moment this assumes that gridworld is installed.
-    from gridworld.chainwalk import Chainwalk
-
-    cw = Chainwalk()
-    t = cw.trace(1000)
-    policy0 = np.zeros(cw.nfeatures)
-    import pdb
-    pdb.set_trace()
-    print LSTDQ(t, cw, policy0)
+    pass
