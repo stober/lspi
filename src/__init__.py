@@ -7,4 +7,4 @@ Description: Init module.
 """
 
 from lspi import LSPI
-from lstdq import LSTDQ
+from lstdq import LSTDQ, FastLSTDQ
