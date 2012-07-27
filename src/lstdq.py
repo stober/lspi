@@ -12,8 +12,11 @@ import numpy as np
 import numpy.random as npr
 import random as pr
 import numpy.linalg as la
-from utils import debugflag
+from utils import debugflag, timerflag
 
+
+@debugflag
+@timerflag
 def LSTDQ(D,env,w):
     """
     D : source of samples (s,a,r,s',a')
@@ -51,6 +54,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 @debugflag
+@timerflag
 def FastLSTDQ(D,env,w):
     """
     Employ as many tricky speedups as I can for large (sparse) phi.
@@ -86,7 +90,8 @@ def FastLSTDQ(D,env,w):
 
     # TODO : Not sure what solver method to use here.
     #return spla.spsolve(A,b)
-    return spla.lsqr(A,b.toarray())
+    stuff = spla.lsqr(A,b.toarray())
+    return stuff[0]
 
 
 if __name__ == '__main__':
