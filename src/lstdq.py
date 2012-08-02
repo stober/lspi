@@ -48,7 +48,7 @@ def LSTDQ(D,env,w):
         A = A + np.outer(features, features - env.gamma * newfeatures)
         b = b + features * r
 
-    return np.dot(la.pinv(A), b)
+    return A,b,np.dot(la.pinv(A), b)
 
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
@@ -67,31 +67,42 @@ def FastLSTDQ(D,env,w):
     k = -1
     k = len(w)
 
-    A = sp.csr_matrix((k,k), dtype=float)
-    b = sp.csr_matrix((k,1), dtype=float)
-
+    A = sp.dok_matrix((k,k))
+    b = sp.dok_matrix((k,1))
 
     i = 0
     for (s,a,r,ns,na) in D:
 
         i += 1
 
-        features = sp.csr_matrix(env.phi(s,a))
+        features = env.phi(s,a,sparse=True)
 
         # we may want to evaluate policies whose features are
         # different from ones that can express the true value
         # function, e.g. tabular
 
         next = env.linear_policy(w, ns)
-        newfeatures = sp.csr_matrix(env.phi(ns, next))
+        newfeatures = env.phi(ns, next, sparse = True)
+        
+        for (i,j) in features.iterkeys():
+            for (s,t) in newfeatures.iterkeys():
+                A[i,s] += features[i,j] * (features[s,t] - env.gamma * newfeatures[s,t])
 
-        A = A + np.dot(features.T,features - env.gamma * newfeatures)
-        b = b + features.T * r
+            b[i,j] += features[i,j] * r
+
+        # A = A + np.dot(features,(features - env.gamma * newfeatures).T)
+        # b = b + features * r
 
     # TODO : Not sure what solver method to use here.
-    #return spla.spsolve(A,b)
-    stuff = spla.lsqr(A,b.toarray())
-    return stuff[0]
+    # return spla.spsolve(A,b)
+
+    A = A.tocsr()
+    b = np.array(b.todense()).squeeze() # matrix squeeze seems to be broken
+
+    stuff = spla.lsmr(A,b.T)
+    #stuff = spla.lsqr(A,b.todense())
+
+    return A,b,stuff[0]
 
 
 if __name__ == '__main__':
