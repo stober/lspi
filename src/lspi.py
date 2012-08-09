@@ -13,7 +13,41 @@ import numpy.linalg as la
 import sys
 import pickle
 from lstdq import *
+from utils import debugflag, timerflag
 
+@timerflag
+@debugflag
+def FastLSPI(D, epsilon, env, policy0, save = False):
+
+    current = policy0
+    all_policies = [current]
+    if save:
+        fp = open('weights.pck','w')
+
+    iter = 0
+    while True:
+
+        print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
+
+        previous = current.copy()
+        A,b,current = FastLSTDQ(D, env, previous)
+        all_policies.append(current)
+
+        if save:
+            pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
+
+        print "WEIGHT DIFF:", la.norm(previous - current)
+        if la.norm(previous - current) < epsilon: break
+
+        iter += 1
+
+        # callback into the environment class for gui stuff?
+        env.callback(iter, current)
+
+    return current, all_policies
+    
+@timerflag
+@debugflag
 def LSPI(D, epsilon, env, policy0, save=False):
 
     current = policy0
@@ -27,13 +61,13 @@ def LSPI(D, epsilon, env, policy0, save=False):
         print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
 
         previous = current
-        current = LSTDQ(D, env, previous)
+        A,b,current = LSTDQ(D, env, previous)
         all_policies.append(current)
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
 
-        print la.norm(previous - current)
+        print "WEIGHT DIFF:", la.norm(previous - current)
         if la.norm(previous - current) < epsilon: break
 
         iter += 1

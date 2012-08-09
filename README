@@ -12,3 +12,10 @@ package (https://github.com/stober/gridworld) provides example
 environments. Both lspi.py and lstdq.py contain example code using a
 simple chainworld environment from the original paper (included in the
 gridworld package).
+
+Current Development Notes:
+
++ Need to get sparse version working with lsqr solver.
++ For the case where the null space of the model matrix is nontrivial multiple weight vectors are optimal. The dense inversion method converges but the solver may not (it may cycle through optimal solutions).
++ Need to change the criterion to stop training to one that depends on values - not feature weights.
++ Need to figure out if the Opt version is correct and worth keeping.
