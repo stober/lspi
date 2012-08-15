@@ -11,23 +11,43 @@ import numpy as np
 from gridworld.chainwalk import Chainwalk
 from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
+from gridworld.gridworldgui import GridworldGui
 from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
 from lspi import OptLSTDQ
 from lspi import FastLSPI
+from td import Sarsa
 
 run_chainwalk = False
-run_gridworld = True
+run_gridworld = False
 rbf_test = False
 run_lspi = False
+test_walls = True
+
+if test_walls:
+    gw = GridworldGui(nrows=9,ncols=9,endstates= [0],walls=[1])
+    #t = gw.trace(10000  )
+    gw.mainloop()
 
 if run_lspi:
-    gw = Gridworld(nrows = 9, ncols = 9, endstates = [0], walls = [])
-    t = gw.trace(10000)
+    gw = GridworldGui(nrows = 9, ncols = 9, endstates = [0], walls = [])
+    t = gw.trace(100000, show = False)
     policy0 = np.zeros(gw.nfeatures())
-    w1, weights1 = FastLSPI(t, 0.01, gw, policy0, debug = False, timer = True)
-    w2, weights2 = LSPI(t, 0.01, gw, policy0, debug = False, timer = True)
+
+    pdb.set_trace()
+        
+    #w1, weights1 = FastLSPI(t, 0.01, gw, policy0, debug = False, timer = True)
+
+    #w2, weights2 = LSPI(t, 0.001, gw, policy0, debug = False, timer = True)
+
+    learner = Sarsa(8, 81, 0.5, 0.9, 0.9, 0.1)
+    learner.learn(1000, gw, verbose=True)
+    pi = [learner.best(s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)
+    gw.background()
+    gw.redraw()
+
 
 if rbf_test:
     gw2 = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)

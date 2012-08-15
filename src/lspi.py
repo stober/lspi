@@ -6,6 +6,7 @@ Date: Tuesday, January 12 2010
 Description: Least Squares Policy Iteration from Lagoudakis and Parr. 2003. JMLR.
 """
 
+import pdb
 import numpy as np
 import numpy.random as npr
 import random as pr
@@ -14,12 +15,17 @@ import sys
 import pickle
 from lstdq import *
 from utils import debugflag, timerflag
+import scipy.sparse as sp
+
 
 @timerflag
 @debugflag
 def FastLSPI(D, epsilon, env, policy0, save = False):
 
     current = policy0
+    k = len(policy0)
+    A = sp.dok_matrix((k,k))
+    Q = np.zeros((env.nstates,env.nactions))
     all_policies = [current]
     if save:
         fp = open('weights.pck','w')
@@ -30,13 +36,27 @@ def FastLSPI(D, epsilon, env, policy0, save = False):
         print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
 
         previous = current.copy()
+        Ap = A.copy()
+        Qp = Q.copy()
+
         A,b,current = FastLSTDQ(D, env, previous)
         all_policies.append(current)
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
 
+        #pdb.set_trace()
+
         print "WEIGHT DIFF:", la.norm(previous - current)
+        print "MODEL DIFF:", la.norm((Ap - A).todense())
+
+        # compute s,a matrix of values
+        for i in range(env.nstates):
+            for j in range(env.nactions):
+                Q[i,j] = np.dot(env.phi(i,j),current)
+
+        print "VALUE DIFF:", la.norm(Qp - Q)
+
         if la.norm(previous - current) < epsilon: break
 
         iter += 1
@@ -45,7 +65,7 @@ def FastLSPI(D, epsilon, env, policy0, save = False):
         env.callback(iter, current)
 
     return current, all_policies
-    
+
 @timerflag
 @debugflag
 def LSPI(D, epsilon, env, policy0, save=False):
