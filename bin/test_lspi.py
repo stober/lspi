@@ -26,7 +26,7 @@ run_lspi = False
 test_walls = True
 
 if test_walls:
-    gw = GridworldGui(nrows=9,ncols=9,endstates= [0],walls=[1])
+    gw = GridworldGui(nrows=9,ncols=9,endstates= [0],walls=[(0,1)])
     #t = gw.trace(10000  )
     gw.mainloop()
 
