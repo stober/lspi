@@ -74,7 +74,7 @@ def QR_LSTDQ(D,env,w):
 
     #A = np.eye(k) * 0.001
     #A = np.zeros((k,k))
-    A = sp.dok_matrix((k,k))
+    A = sp.eye(k,k) * 0.001 #.dok_matrix((k,k))
     b = sp.dok_matrix((k,1))
 
     dA = None
@@ -123,7 +123,7 @@ def QR_LSTDQ(D,env,w):
                 #print "WARNING: A is singular!"
 
     squeeze_b = np.array(b.todense()).squeeze()
-    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,damp=1e-6,show=True)
+    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=True)
     
 
     if testing == True: 
