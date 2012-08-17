@@ -18,6 +18,7 @@ from lspi import LSPI
 from lspi import FastLSTDQ
 from lspi import OptLSTDQ
 from lspi import FastLSPI
+from lspi import QR_LSPI
 from td import Sarsa
 
 run_chainwalk = False
@@ -28,11 +29,15 @@ test_walls = True
 
 if test_walls:
     # pdb.set_trace()
-    gw = GridworldGui(nrows=5,ncols=5,endstates= [0], actions=[0,2], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
+    gw = GridworldGui(nrows=5,ncols=5,endstates= [0], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
+    #gw = GridworldGui(nrows=5,ncols=5,endstates= [0], actions=[0,2], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
     t = gw.trace(1000)
     policy0 = np.zeros(gw.nfeatures())
-    w0, weights0 = LSPI(t, 0.001, gw, policy0)
-    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+
+    #w0, weights0 = LSPI(t, 0.001, gw, policy0)    
+    w1, weights1 = QR_LSPI(t, 0.001, gw, policy0, debug = False)
+
+    pi = [gw.linear_policy(w1,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)
     gw.background()
     # gw.redraw()

@@ -59,6 +59,50 @@ import scipy.sparse.linalg as spla
 
 @timerflag
 @debugflag
+def QR_LSTDQ(D,env,w):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+    """
+
+    k = -1
+    k = len(w)
+
+    #A = np.eye(k) * 0.001
+    A = np.zeros((k,k))
+    b = np.zeros(k)
+
+    i = 0
+    for (s,a,r,ns,na) in D:
+
+        #print i
+        i += 1
+
+        features = env.phi(s,a)
+
+        # we may want to evaluate policies whose features are
+        # different from ones that can express the true value
+        # function, e.g. tabular
+
+        next = env.linear_policy(w, ns)
+        newfeatures = env.phi(ns, next)
+
+        A = A + np.outer(features, features - env.gamma * newfeatures)
+        b = b + features * r
+
+    print "DET: ", la.det(A)
+    if la.det(A) == 0.0:
+        print "WARNING: A is singular!"
+        
+    stuff = spla.lsqr(A,b.T,atol=1e-8,btol=1e-8,damp=1e-6,show=True)
+    
+    return A,b,stuff[0]
+
+
+
+@timerflag
+@debugflag
 def OptLSTDQ(D,env,w):
     """
     Use paper's suggested optimization method.

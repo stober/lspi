@@ -20,7 +20,7 @@ import scipy.sparse as sp
 
 @timerflag
 @debugflag
-def FastLSPI(D, epsilon, env, policy0, save = False):
+def FastLSPI(D, epsilon, env, policy0, save = False, maxiter=10):
 
     current = policy0
     k = len(policy0)
@@ -31,7 +31,7 @@ def FastLSPI(D, epsilon, env, policy0, save = False):
         fp = open('weights.pck','w')
 
     iter = 0
-    while True:
+    while iter < maxiter:
 
         print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
 
@@ -66,9 +66,10 @@ def FastLSPI(D, epsilon, env, policy0, save = False):
 
     return current, all_policies
 
+
 @timerflag
 @debugflag
-def LSPI(D, epsilon, env, policy0, save=False):
+def QR_LSPI(D, epsilon, env, policy0, save=False, maxiter=10):
 
     current = policy0
     all_policies = [current]
@@ -76,7 +77,40 @@ def LSPI(D, epsilon, env, policy0, save=False):
         fp = open('weights.pck','w')
 
     iter = 0
-    while True:
+    while iter < maxiter:
+
+        print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
+
+        previous = current
+        A,b,current = QR_LSTDQ(D, env, previous)
+        all_policies.append(current)
+
+        if save:
+            pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
+
+        print "WEIGHT DIFF:", la.norm(previous - current)
+        if la.norm(previous - current) < epsilon: break
+
+        iter += 1
+
+        # callback into the environment class for gui stuff?
+        env.callback(iter, current)
+
+    return current, all_policies
+
+
+
+@timerflag
+@debugflag
+def LSPI(D, epsilon, env, policy0, save=False, maxiter=10):
+
+    current = policy0
+    all_policies = [current]
+    if save:
+        fp = open('weights.pck','w')
+
+    iter = 0
+    while iter < maxiter:
 
         print "Iteration %d" % iter, " Weight Sum: %f" % np.sum(current)
 
