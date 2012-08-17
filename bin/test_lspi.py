@@ -37,7 +37,7 @@ if test_walls:
     t = pickle.load(open("trace.pck"))
     policy0 = np.zeros(gw.nfeatures())
 
-    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100)    
+    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100, method="sparse")    
     #w1, weights1 = QR_LSPI(t, 0.001, gw, policy0, maxiter=100, debug = False)
 
     w = w0
