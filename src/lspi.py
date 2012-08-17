@@ -106,6 +106,9 @@ def LSPI(D, epsilon, env, policy0, save=False, maxiter=10):
 
     current = policy0
     all_policies = [current]
+    Q = np.zeros((env.nstates,env.nactions))
+    Qp = np.zeros((env.nstates,env.nactions))
+
     if save:
         fp = open('weights.pck','w')
 
@@ -123,6 +126,20 @@ def LSPI(D, epsilon, env, policy0, save=False, maxiter=10):
 
         print "WEIGHT DIFF:", la.norm(previous - current)
         if la.norm(previous - current) < epsilon: break
+
+        # compute s,a matrix of values
+        for i in range(env.nstates):
+            for j in range(env.nactions):
+                Q[i,j] = np.dot(env.phi(i,j),current)
+
+        print "VALUE DIFF:", la.norm(Qp - Q)
+        
+        if iter > 10:
+            pdb.set_trace()
+
+        Qp[:] = Q[:]
+
+
 
         iter += 1
 

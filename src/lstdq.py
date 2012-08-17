@@ -17,18 +17,19 @@ from utils import debugflag, timerflag
 
 @timerflag
 @debugflag
-def LSTDQ(D,env,w):
+def LSTDQ(D,env,w,damping=0.001):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
+    damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
     """
 
     k = -1
     k = len(w)
 
     #A = np.eye(k) * 0.001
-    A = np.zeros((k,k))
+    A = np.zeros((k,k)) + np.eye(k) * damping
     b = np.zeros(k)
 
     i = 0
@@ -66,12 +67,21 @@ def QR_LSTDQ(D,env,w):
     w : weights for the linear policy evaluation
     """
 
+    testing=True
+
     k = -1
     k = len(w)
 
     #A = np.eye(k) * 0.001
-    A = np.zeros((k,k))
-    b = np.zeros(k)
+    #A = np.zeros((k,k))
+    A = sp.dok_matrix((k,k))
+    b = sp.dok_matrix((k,1))
+
+    dA = None
+    db = None
+    if testing == True:
+        dA = np.zeros((k,k))
+        db = np.zeros(k)
 
     i = 0
     for (s,a,r,ns,na) in D:
@@ -79,24 +89,57 @@ def QR_LSTDQ(D,env,w):
         #print i
         i += 1
 
-        features = env.phi(s,a)
+        features = env.phi(s,a,sparse=True)
 
         # we may want to evaluate policies whose features are
         # different from ones that can express the true value
         # function, e.g. tabular
 
         next = env.linear_policy(w, ns)
-        newfeatures = env.phi(ns, next)
+        newfeatures = env.phi(ns, next,sparse=True)
 
-        A = A + np.outer(features, features - env.gamma * newfeatures)
-        b = b + features * r
+        nf = features - env.gamma * newfeatures
+        T = sp.kron(features, nf.T)
+        A = A + T
+        b = b + features * r 
 
-    print "DET: ", la.det(A)
-    if la.det(A) == 0.0:
-        print "WARNING: A is singular!"
-        
-    stuff = spla.lsqr(A,b.T,atol=1e-8,btol=1e-8,damp=1e-6,show=True)
+        if testing == True:
+            """
+            Do expensive dense computations and compare against the sparse computations for testing.
+            """
+
+            d_features = env.phi(s,a)
+            d_features_new = env.phi(ns,next)
+            dT = np.outer(d_features, d_features - env.gamma * d_features_new)
+
+            if not np.allclose(dT, T.todense()):
+                print "****** (dT,T) are not CLOSE! ******"
+
+            dA = dA + dT
+            db = db + d_features * r
+
+            #print "DET: ", la.det(dA)
+            #if la.det(dA) == 0.0:
+                #print "WARNING: A is singular!"
+
+    squeeze_b = np.array(b.todense()).squeeze()
+    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,damp=1e-6,show=True)
     
+
+    if testing == True: 
+
+        if not np.allclose(dA,A.todense()):
+            print "***** (dA,A) are not CLOSE! *****"
+
+
+        if not np.allclose(b.T.todense(),db):
+            print "****** (db,b) are not CLOSE! *****"
+
+        dw = np.dot(la.pinv(dA),db)
+
+        print "***** Weight Diff *****"
+        print la.norm(dw - stuff[0])
+
     return A,b,stuff[0]
 
 
