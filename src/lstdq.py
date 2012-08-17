@@ -27,6 +27,7 @@ def LSTDQ(D,env,w):
     k = -1
     k = len(w)
 
+    #A = np.eye(k) * 0.001
     A = np.zeros((k,k))
     b = np.zeros(k)
 
@@ -48,6 +49,9 @@ def LSTDQ(D,env,w):
         A = A + np.outer(features, features - env.gamma * newfeatures)
         b = b + features * r
 
+    print "DET: ", la.det(A)
+    if la.det(A) == 0.0:
+        print "WARNING: A is singular!"
     return A,b,np.dot(la.pinv(A), b)
 
 import scipy.sparse as sp

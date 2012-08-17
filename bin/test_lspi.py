@@ -7,6 +7,7 @@ Description: Test code for LSPI.
 """
 
 import pdb
+import sys
 import numpy as np
 from gridworld.chainwalk import Chainwalk
 from gridworld.gridworld8 import SparseGridworld8 as Gridworld
@@ -26,8 +27,16 @@ run_lspi = False
 test_walls = True
 
 if test_walls:
-    gw = GridworldGui(nrows=9,ncols=9,endstates= [0],walls=[(0,1)])
-    #t = gw.trace(10000  )
+    # pdb.set_trace()
+    gw = GridworldGui(nrows=5,ncols=5,endstates= [0], actions=[0,2], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
+    t = gw.trace(1000)
+    policy0 = np.zeros(gw.nfeatures())
+    w0, weights0 = LSPI(t, 0.001, gw, policy0)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)
+    gw.background()
+    # gw.redraw()
+
     gw.mainloop()
 
 if run_lspi:
