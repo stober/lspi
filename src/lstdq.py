@@ -62,7 +62,7 @@ import scipy.sparse.linalg as spla
 
 @timerflag
 @debugflag
-def QR_LSTDQ(D,env,w,damping=0.001,show=False,testing=True):
+def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -158,62 +158,6 @@ def OptLSTDQ(D,env,w):
         b = b + features * r
 
     return B,b,np.dot(B,b)
-
-@timerflag
-@debugflag
-def FastLSTDQ(D,env,w):
-    """
-    Employ as many tricky speedups as I can for large (sparse) phi.
-
-    D : source of samples (s,a,r,s',a')
-    env: environment contianing k,phi,gamma
-    w : weights for the linear policy evaluation
-    """
-
-    k = -1
-    k = len(w)
-
-    A = sp.dok_matrix((k,k))
-    b = sp.dok_matrix((k,1))
-
-    i = 0
-    for (s,a,r,ns,na) in D:
-
-        i += 1
-
-        features = env.phi(s,a,sparse=True)
-
-        # we may want to evaluate policies whose features are
-        # different from ones that can express the true value
-        # function, e.g. tabular
-
-        next = env.linear_policy(w, ns)
-        newfeatures = env.phi(ns, next, sparse = True)
-
-        for (i,j) in features.iterkeys():
-            for (s,t) in newfeatures.iterkeys():
-                A[i,s] += features[i,j] * (features[s,t] - env.gamma * newfeatures[s,t])
-
-            b[i,j] += features[i,j] * r
-
-        # A = A + np.dot(features,(features - env.gamma * newfeatures).T)
-        # b = b + features * r
-
-    # TODO : Not sure what solver method to use here.
-    # return spla.spsolve(A,b)
-
-	A = A.tocsr()
-    b = np.array(b.todense()).squeeze() # matrix squeeze seems to be broken
-
-    # Note: If the damping parameter is too large that part of the
-    # optimization problem will dominate the solution resulting in a
-    # poor weight estimate.
-
-    #stuff = spla.lsmr(A,b.T,atol=1e-8,btol=1e-8,show=True)
-    stuff = spla.lsqr(A,b.T,atol=1e-8,btol=1e-8,damp=1e-6,show=True)
-    #stuff = spla.lsqr(A,b.T,atol=1e-8,btol=1e-8,show=True)
-
-    return A,b,stuff[0]
 
 
 if __name__ == '__main__':
