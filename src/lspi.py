@@ -26,7 +26,7 @@ class Diagnostics:
         self.env = env
         self.Q = np.zeros((env.nstates,env.nactions))
         self.Qp = np.zeros((env.nstates,env.nactions))
-        self.previous = np.zeros(env.nfeatures)
+        self.previous = np.zeros(env.nfeatures())
 
     def __call__(self,iters, policy):
             for i in range(self.env.nstates):
@@ -58,28 +58,31 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
 
     if show:
         diagnostics = Diagnostics(env)
+
     if save:
         fp = open('weights.pck','w')
 
     iters = 0
-    while iters < maxiter:
-
-        previous = current
-        if method is "dense":
-            A,b,current = LSTDQ(D, env, previous)
-        elif method is "sparse":
-            A,b,current = QR_LSTDQ(D, env, previous)
+    finished = False
+    while iters < maxiter and not finished:
 
         all_policies.append(current)
+
+        if method is "dense":
+            A,b,current = LSTDQ(D, env, current,show=show)
+        elif method is "sparse":
+            A,b,current = QR_LSTDQ(D, env, current,show=show)
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
 
-        if la.norm(previous - current) < epsilon: break
-
         if show:
             print diagnostics(iters,current)
 
+        for p in all_policies:
+            if la.norm(p - current) < epsilon: 
+                finished = True
+        
         iters += 1
 
     return current, all_policies
@@ -93,7 +96,7 @@ def test():
 
     cw = Chainwalk()
     trace = cw.trace()
-    zeros = np.zeros(cw.nfeatures)
+    zeros = np.zeros(cw.nfeatures())
     w = LSPI(trace,0.0001,cw,zeros,show=True)
     print w
 

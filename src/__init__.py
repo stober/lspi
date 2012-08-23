@@ -6,5 +6,5 @@ Date: Friday, November 11 2011
 Description: Init module.
 """
 
-from lspi import LSPI, FastLSPI, QR_LSPI
+from lspi import LSPI
 from lstdq import LSTDQ, FastLSTDQ, OptLSTDQ, QR_LSTDQ
