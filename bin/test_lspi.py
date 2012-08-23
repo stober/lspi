@@ -35,7 +35,7 @@ if test_walls:
     t = pickle.load(open("trace.pck"))
     policy0 = np.zeros(gw.nfeatures())
 
-    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100, method="sparse", show=True)    
+    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100, method="opt", show=True, debug=False)    
 
     w = w0
     pi = [gw.linear_policy(w,s) for s in range(gw.nstates)]

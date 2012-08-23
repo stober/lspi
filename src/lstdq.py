@@ -16,7 +16,7 @@ from utils import debugflag, timerflag
 
 @timerflag
 @debugflag
-def LSTDQ(D,env,w,damping=0.001,show=False):
+def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -28,7 +28,7 @@ def LSTDQ(D,env,w,damping=0.001,show=False):
     k = len(w)
 
     #A = np.eye(k) * 0.001
-    A = np.zeros((k,k)) + np.eye(k) * damping
+    A = np.eye(k) * damping
     b = np.zeros(k)
 
     i = 0
@@ -98,7 +98,7 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
         b = b + features * r 
 
     squeeze_b = np.array(b.todense()).squeeze()
-    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=True)
+    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
     
     if testing == True: 
         print "Testing against dense version."
@@ -125,7 +125,7 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
 
 @timerflag
 @debugflag
-def OptLSTDQ(D,env,w):
+def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
     """
     Use paper's suggested optimization method.
 
@@ -137,7 +137,7 @@ def OptLSTDQ(D,env,w):
     k = -1
     k = len(w)
 
-    B = sp.identity(k)
+    B = sp.identity(k) * 1.0/damping
     b = sp.dok_matrix((k,1))
 
     i = 0
@@ -150,14 +150,31 @@ def OptLSTDQ(D,env,w):
         next = env.linear_policy(w, ns)
         newfeatures = env.phi(ns, next, sparse = True)
 
-        uv = np.dot(features,newfeatures.T)
-        N = np.dot(np.dot(B,uv),B)
-        d = 1 + np.dot(np.dot(newfeatures.T,B),features)[0,0]
+        nf = features - env.gamma * newfeatures
+        uv = sp.kron(features,nf.T)
+        N = B.dot(uv).dot(B)
+        d = 1 + nf.T.dot(B).dot(features)[0,0]
 
         B = B - N / d
         b = b + features * r
 
-    return B,b,np.dot(B,b)
+    if testing:
+        print "Testing against dense version."
+        dA,db,dw = LSTDQ(D,env,w,damping=damping,show=show) 
+
+        dB = la.pinv(dA)
+        if not np.allclose(dB,B.todense(),atol=1e-6,rtol=0.0):
+            print "***** (dB,B) are not CLOSE! *****"
+        else:
+            print "(dB,B) are close!"
+
+        if not np.allclose(b.T.todense(),db):
+            print "****** (db,b) are not CLOSE! *****"
+        else:
+            print "(db,b) are close!"
+
+
+    return B,b,B.dot(b).toarray()[:,0]
 
 
 if __name__ == '__main__':

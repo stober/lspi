@@ -72,6 +72,8 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
             A,b,current = LSTDQ(D, env, current,show=show)
         elif method is "sparse":
             A,b,current = FastLSTDQ(D, env, current,show=show)
+        elif method is "opt":
+            A,b,current = OptLSTDQ(D, env, current,show=show)
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
