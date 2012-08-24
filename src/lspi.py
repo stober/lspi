@@ -57,7 +57,7 @@ class Diagnostics:
 
 @timerflag
 @debugflag
-def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False):
+def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "dok"):
 
     current = policy0
     all_policies = [current]
@@ -77,9 +77,9 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         if method is "dense":
             A,b,current = LSTDQ(D, env, current,show=show)
         elif method is "sparse":
-            A,b,current = FastLSTDQ(D, env, current,show=show)
+            A,b,current = FastLSTDQ(D, env, current,show=show,format=format)
         elif method is "opt":
-            A,b,current = OptLSTDQ(D, env, current,show=show)
+            A,b,current = OptLSTDQ(D, env, current,show=show,format=format)
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)

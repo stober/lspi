@@ -12,7 +12,7 @@ import numpy as np
 import numpy.random as npr
 import random as pr
 import numpy.linalg as la
-from utils import debugflag, timerflag
+from utils import debugflag, timerflag, sp_create
 
 @timerflag
 @debugflag
@@ -56,11 +56,13 @@ import scipy.sparse.linalg as spla
 
 @timerflag
 @debugflag
-def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False):
+def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="dok"):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
+
+    Note that "dok" format seems to work best. Should convert to csr for arithmatic operations automatically.
     """
 
     k = -1
@@ -68,23 +70,22 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False):
 
     #A = np.eye(k) * 0.001
     #A = np.zeros((k,k))
-    A = sp.eye(k,k) * damping #.dok_matrix((k,k))
-    b = sp.dok_matrix((k,1))
-
+    A = sp.identity(k,format=format) * damping
+    b = sp_create(k,1,format)
 
     i = 0
     for (s,a,r,ns,na) in D:
 
         i += 1
 
-        features = env.phi(s,a,sparse=True)
+        features = env.phi(s, a, sparse=True, format=format)
 
         # we may want to evaluate policies whose features are
         # different from ones that can express the true value
         # function, e.g. tabular
 
         next = env.linear_policy(w, ns)
-        newfeatures = env.phi(ns, next,sparse=True)
+        newfeatures = env.phi(ns, next, sparse=True, format=format)
 
         nf = features - env.gamma * newfeatures
         T = sp.kron(features, nf.T)
@@ -119,7 +120,7 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False):
 
 @timerflag
 @debugflag
-def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
+def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
     """
     Use paper's suggested optimization method.
 
@@ -131,18 +132,19 @@ def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
     k = -1
     k = len(w)
 
-    B = sp.identity(k) * 1.0/damping
-    b = sp.dok_matrix((k,1))
+
+    B = sp.identity(k,format=format) * 1.0/damping
+    b = sp_create(k,1,format)
 
     i = 0
     for (s,a,r,ns,na) in D:
 
         i += 1
 
-        features = env.phi(s,a,sparse = True)
+        features = env.phi(s,a,sparse = True, format=format)
 
         next = env.linear_policy(w, ns)
-        newfeatures = env.phi(ns, next, sparse = True)
+        newfeatures = env.phi(ns, next, sparse = True, format=format)
 
         nf = features - env.gamma * newfeatures
         uv = sp.kron(features,nf.T)

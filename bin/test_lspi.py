@@ -85,7 +85,7 @@ if test_scale:
         pickle.dump(t,open("scale_trace.pck","w"),pickle.HIGHEST_PROTOCOL)
 
     policy0 = np.zeros(gw.nfeatures())
-    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="sparse", debug = False, timer = True, show=False)
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="sparse", debug = False, timer = True, show=False,format="dok")
     # pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     # gw.set_arrows(pi)    
     # gw.background()
