@@ -48,12 +48,6 @@ def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
 
         A = A + np.outer(features, features - env.gamma * newfeatures)
         b = b + features * r
-
-    if show:
-        print "DET: ", la.det(A)
-    
-    if la.det(A) == 0.0:
-        print "WARNING: A is singular!"
     
     return A,b,np.dot(la.pinv(A), b)
 
@@ -62,7 +56,7 @@ import scipy.sparse.linalg as spla
 
 @timerflag
 @debugflag
-def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=True):
+def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma

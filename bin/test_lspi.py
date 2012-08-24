@@ -20,49 +20,49 @@ from lspi import OptLSTDQ
 from td import Sarsa
 import cPickle as pickle
 
+# Choose what tests to run.
 run_chainwalk = False
 run_gridworld = False
 rbf_test = False
-run_lspi = False
-test_walls = True
+test_lspi = True
+test_walls = False
 
 if test_walls:
-    # pdb.set_trace()   
     gw = GridworldGui(nrows=5,ncols=5,endstates= [0], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
-    #gw = GridworldGui(nrows=5,ncols=5,endstates= [0], actions=[0,2], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
-    #t = gw.trace(1000)
-    #pickle.dump(t,open("trace.pck","w"),pickle.HIGHEST_PROTOCOL)
-    t = pickle.load(open("trace.pck"))
+    try:
+        t = pickle.load(open("walls_trace.pck"))
+    except:
+        t = gw.trace(1000, show=False)
+        pickle.dump(t,open("walls_trace.pck","w"),pickle.HIGHEST_PROTOCOL)
+    
     policy0 = np.zeros(gw.nfeatures())
-
-    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100, method="opt", show=True, debug=False)    
-
-    w = w0
-    pi = [gw.linear_policy(w,s) for s in range(gw.nstates)]
+    # TODO - The tolerances for lsqr need to be related to the tolerances for the policy. Otherwise the number of iterations will be far larger than needed.
+    w0, weights0 = LSPI(t, 0.003, gw, policy0, maxiter=100, method="opt", show=True, debug=False)    
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)
     gw.background()
-    # gw.redraw()        b = b + (features * r).T.toarray()[0]
-
     gw.mainloop()
 
-if run_lspi:
+if test_lspi:
     gw = GridworldGui(nrows = 9, ncols = 9, endstates = [0], walls = [])
-    t = gw.trace(100000, show = False)
+    try:
+        t = pickle.load(open("lspi_trace.pck"))
+    except:
+        t = gw.trace(10000, show = False)
+        pickle.dump(t,open("lspi_trace.pck","w"),pickle.HIGHEST_PROTOCOL)
+    
     policy0 = np.zeros(gw.nfeatures())
-
-    pdb.set_trace()
-        
-    #w1, weights1 = FastLSPI(t, 0.01, gw, policy0, debug = False, timer = True)
-
-    #w2, weights2 = LSPI(t, 0.001, gw, policy0, debug = False, timer = True)
-
-    learner = Sarsa(8, 81, 0.5, 0.9, 0.9, 0.1)
-    learner.learn(1000, gw, verbose=True)
-    pi = [learner.best(s) for s in range(gw.nstates)]
-    gw.set_arrows(pi)
+    w0, weights0 = LSPI(t, 0.001, gw, policy0, maxiter=100, method="sparse", debug = False, timer = True, show=True)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
     gw.background()
-    gw.redraw()
+    gw.mainloop()
 
+    # learner = Sarsa(8, 81, 0.5, 0.9, 0.9, 0.1)
+    # learner.learn(10000, gw, verbose=True)
+    # pi = [learner.best(s) for s in range(gw.nstates)]
+    # gw.set_arrows(pi)
+    
 
 if rbf_test:
     gw2 = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)

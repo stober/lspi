@@ -28,17 +28,23 @@ class Diagnostics:
         self.Qp = np.zeros((env.nstates,env.nactions))
         self.previous = np.zeros(env.nfeatures())
 
-    def __call__(self,iters, policy):
+    def __call__(self,iters, policy, A):
             for i in range(self.env.nstates):
                 for j in range(self.env.nactions):
                     self.Q[i,j] = np.dot(self.env.phi(i,j), policy)
         
+            if sp.issparse(A):
+                [u,s,v] = sp.linalg.svds(A)
+            else:
+                [u,s,v] = la.svd(A)
             result = """
             Iteration {0}
             Weight Sum {1}
             Weight Diff {2}
             Value Diff {3}
-            """.format(iters,np.sum(policy),la.norm(policy-self.previous),la.norm(self.Q - self.Qp))
+            Max Singular Value {4}
+            Min Singular Value {5}
+            """.format(iters,np.sum(policy),la.norm(policy-self.previous),la.norm(self.Q - self.Qp),np.max(s),np.min(s))
         
             self.previous[:] = policy[:]
             self.Qp[:] = self.Q[:]
@@ -79,10 +85,12 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
 
         if show:
-            print diagnostics(iters,current)
+            print diagnostics(iters,current,A)
+            for (i,p) in enumerate(all_policies):
+                print "policy: ", i, la.norm(p - current)
 
         for p in all_policies:
-            if la.norm(p - current) < epsilon: 
+            if la.norm(p - current) < epsilon:  
                 finished = True
         
         iters += 1
