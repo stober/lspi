@@ -12,10 +12,12 @@ import numpy as np
 import numpy.random as npr
 import random as pr
 import numpy.linalg as la
-from utils import debugflag, timerflag, sp_create
+from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG
+from utils import sp_create
 
-@timerflag
-@debugflag
+#logger = log_to_stderr()
+#logger.setLevel(SUBDEBUG)
+
 def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
     """
     D : source of samples (s,a,r,s',a')
@@ -27,15 +29,10 @@ def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
     k = -1
     k = len(w)
 
-    #A = np.eye(k) * 0.001
     A = np.eye(k) * damping
     b = np.zeros(k)
 
-    i = 0
     for (s,a,r,ns,na) in D:
-
-        #print i
-        i += 1
 
         features = env.phi(s,a)
 
@@ -54,8 +51,6 @@ def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-@timerflag
-@debugflag
 def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="dok"):
     """
     D : source of samples (s,a,r,s',a')
@@ -68,15 +63,10 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="dok"):
     k = -1
     k = len(w)
 
-    #A = np.eye(k) * 0.001
-    #A = np.zeros((k,k))
     A = sp.identity(k,format=format) * damping
     b = sp_create(k,1,format)
 
-    i = 0
     for (s,a,r,ns,na) in D:
-
-        i += 1
 
         features = env.phi(s, a, sparse=True, format=format)
 
@@ -116,10 +106,89 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="dok"):
 
     return A,b,stuff[0]
 
+def PFastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="dok"):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+
+    Note that "dok" format seems to work best. Should convert to csr for arithmatic operations automatically.
+    """
+
+    nprocess = 4 # TODO: make this the cpu count
+    pool = Pool(nprocess)
+
+    chunk = len(D) / nprocess
+    indx = [[i * chunk, ((i+1) * chunk)] for i in range(nprocess)]
+    indx[-1][1] = len(D)
+    results = []
+    for (i,j) in indx:
+        r = pool.apply_async(FastLSTDQ,(D[i:j],env,w,damping,show,testing,format))
+        results.append(r)
+        
+    k = len(w)
+    A = sp.identity(k,format=format)
+    b = sp_create(k,1,format)
+    for r in results:
+        T,t,tmp = r.get()
+        A = A + T
+        b = b + t
+
+    squeeze_b = np.array(b.todense()).squeeze()
+    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
+    return A,b,stuff[0]
+
+    # k = -1
+    # k = len(w)
+
+    # A = sp.identity(k,format=format) * damping
+    # b = sp_create(k,1,format)
+
+    # def compute(args):
+    #     print "Called!"
+    #     s,a,r,ns,na = args
+    #     features = env.phi(s,a,sparse=True,format=self.format)
+    #     next = env.linear_policy(self.w,ns)
+    #     newfeatures = env.phi(ns, next, sparse=True, format=self.format)
+    #     nf = features - env.gamma * newfeatures
+    #     T = sp.kron(features,nf.T)
+    #     t = features * r
+    #     return T,t 
+
+    # import pdb
+    # pdb.set_trace()
+    # pool = Pool(4)
+    # it = pool.imap_unordered(compute,D,100)
+    # for T,t in it:
+    #     A += T
+    #     b += t
+
+    # squeeze_b = np.array(b.todense()).squeeze()
+    # stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
+    
+    # if testing == True: 
+    #     print "Testing against dense version."
+    #     dA,db,dw = LSTDQ(D,env,w,damping=damping,show=show)        
+
+    #     if not np.allclose(dA,A.todense()):
+    #         print "***** (dA,A) are not CLOSE! *****"
+    #     else:
+    #         print "(dA,A) are close!"
+
+    #     if not np.allclose(b.T.todense(),db):
+    #         print "****** (db,b) are not CLOSE! *****"
+    #     else:
+    #         print "(db,b) are close!"
+
+    #     if not np.allclose(stuff[0], dw):
+    #         print "****** (dw,w) are not CLOSE! *****"
+    #     else:
+    #         print "(dw,w) are close!"
+
+    # return A,b,stuff[0]
 
 
-@timerflag
-@debugflag
+
 def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
     """
     Use paper's suggested optimization method.
@@ -132,14 +201,10 @@ def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
     k = -1
     k = len(w)
 
-
     B = sp.identity(k,format=format) * 1.0/damping
     b = sp_create(k,1,format)
 
-    i = 0
     for (s,a,r,ns,na) in D:
-
-        i += 1
 
         features = env.phi(s,a,sparse = True, format=format)
 
