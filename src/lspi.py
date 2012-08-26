@@ -57,7 +57,7 @@ class Diagnostics:
 
 @timerflag
 @debugflag
-def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "dok"):
+def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "csr"):
 
     current = policy0
     all_policies = [current]
@@ -81,7 +81,11 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         elif method is "opt":
             A,b,current = OptLSTDQ(D, env, current,show=show,format=format)
         elif method is "parallel":
-            A,b,current = PFastLSTDQ(D, env, current, show=show, format=format)
+            A,b,current = ParallelLSTDQ(D, env, current, show=show, format=format)
+        elif method is "alt":
+            A,b,current = AltLSTDQ(D,env,current,show=show, format=format)
+        else:
+            raise ValueError, "Unknown method!"
 
         if save:
             pickle.dump(current,fp,pickle.HIGHEST_PROTOCOL)
