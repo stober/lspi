@@ -77,11 +77,11 @@ if test_chainwalk:
     print LSTDQ(t, cw, policy0)
 
 if test_scale:
-    gw = Gridworld(nrows=32,ncols=32, endstates = [0], walls=[])
+    gw = Gridworld(nrows=64,ncols=64, endstates = [0], walls=[])
     try:
         t = pickle.load(open("scale_trace.pck"))
     except:
-        t = gw.trace(100000, show = False)
+        t = gw.trace(100000)#, show = False)
         pickle.dump(t,open("scale_trace.pck","w"),pickle.HIGHEST_PROTOCOL)
 
     policy0 = np.zeros(gw.nfeatures())

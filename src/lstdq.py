@@ -12,8 +12,8 @@ import numpy as np
 import numpy.random as npr
 import random as pr
 import numpy.linalg as la
-from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG
-from utils import sp_create
+from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG, cpu_count
+from utils import sp_create,chunk
 
 #logger = log_to_stderr()
 #logger.setLevel(SUBDEBUG)
@@ -142,7 +142,7 @@ def child_compute(args):
 def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
     """Alternative parallel implementation. Based on some intial tests the other version is faster. """
 
-    nprocess = 4
+    nprocess = cpu_count()
     pool = Pool(nprocess,initializer=child_initialize,initargs=(env,w,format))
 
     k = -1
@@ -171,12 +171,9 @@ def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
     Note that "csr" format seems to work best. Should convert to csr for arithmatic operations automatically.
     """
 
-    nprocess = 4 # TODO: make this the cpu count
+    nprocess = cpu_count()
     pool = Pool(nprocess)
-
-    chunk = len(D) / nprocess
-    indx = [[i * chunk, ((i+1) * chunk)] for i in range(nprocess)]
-    indx[-1][1] = len(D)
+    indx = chunk(len(D),nprocess)
     results = []
     for (i,j) in indx:
         r = pool.apply_async(FastLSTDQ,(D[i:j],env,w,damping,show,testing,format,True))
