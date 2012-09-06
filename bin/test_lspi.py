@@ -12,7 +12,8 @@ import numpy as np
 from gridworld.chainwalk import Chainwalk
 from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
-from gridworld.gridworldgui import GridworldGui
+from gridworld.gridworld8 import wall_pattern
+from gridworld.gridworldgui import GridworldGui, RBFGridworldGui
 from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
@@ -21,13 +22,11 @@ from td import Sarsa
 import cPickle as pickle
 
 # Choose what tests to run.
-run_gridworld = False
-rbf_test = False
-
-test_scale= True
+test_rbf = False
+test_scale= False
 test_chainwalk = False
 test_sarsa = False
-test_lspi = False
+test_lspi = True
 test_walls = False
 
 if test_walls:
@@ -77,7 +76,7 @@ if test_chainwalk:
     print LSTDQ(t, cw, policy0)
 
 if test_scale:
-    gw = Gridworld(nrows=64,ncols=64, endstates = [0], walls=[])
+    gw = GridworldGui(nrows=64,ncols=64, size=8, endstates = [0], walls=[])
     try:
         t = pickle.load(open("scale_trace.pck"))
     except:
@@ -86,16 +85,22 @@ if test_scale:
 
     policy0 = np.zeros(gw.nfeatures())
     #w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="alt", debug = False, timer = True, show=False, format="csr")
-    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="parallel", debug = False, timer = True, show=False, format="csr")
-    # pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
-    # gw.set_arrows(pi)    
-    # gw.background()
-    # gw.mainloop()
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=False, format="csr",ncpus=6)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
+    gw.background()
+    gw.mainloop()
 
-if rbf_test:
-    gw2 = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
-    s = gw2.trace(10000)
-    policy2 = np.zeros(gw2.nfeatures())
-
+if test_rbf:
+    walls = wall_pattern(9,9)
+    gw = RBFGridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0], size=16, nrbf=15)
+    # gw = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
+    t = gw.trace(1000)
+    policy0 = np.zeros(gw.nfeatures())
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, format="csr",ncpus=6)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
+    gw.background()
+    gw.mainloop()
 
 

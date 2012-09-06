@@ -18,6 +18,52 @@ from utils import sp_create,chunk
 #logger = log_to_stderr()
 #logger.setLevel(SUBDEBUG)
 
+# lsqr return values
+# x : ndarray of float
+# istop : int
+# itn : int
+# r1norm : float
+# r2norm : float
+# anorm : float
+# acond : float
+# arnorm : float
+# xnorm : float
+# var : ndarray of float
+
+def solve(A, b, method="pinv", diagnostics = True):
+    info = {}
+    w = None
+
+    if method == "pinv":
+        if diagnostics:
+            info['acond'] = la.cond(A)
+        w = np.dot(la.pinv(A),b)
+
+    elif method == "dot":
+        if diagnostics:
+            info['acond'] = la.cond(A)
+        w = A.dot(b).toarray()[:,0]
+
+    elif method == "lsqr":
+        squeeze_b = np.array(b.todense()).squeeze()
+        qr_result = spla.lsqr(A,squeeze_b.T, atol=1e-8, btol=1e-8, show=diagnostics)
+    
+        # diagnostics are already computed so we always populate info in this case    
+        w = qr_result[0]
+        info['istop'] = qr_result[1]
+        info['itn'] = qr_result[2]
+        info['r1norm'] = qr_result[3]
+        info['r2norm'] = qr_result[4]
+        info['anorm'] = qr_result[5]
+        info['acond'] = qr_result[6]
+        info['xnorm'] = qr_result[7]
+        info['var'] = qr_result[8]
+    
+    else:
+        raise ValueError, "Unknown solution method!"
+
+    return w,info
+
 def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
     """
     D : source of samples (s,a,r,s',a')
@@ -45,8 +91,9 @@ def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
 
         A = A + np.outer(features, features - env.gamma * newfeatures)
         b = b + features * r
-    
-    return A,b,np.dot(la.pinv(A), b)
+
+    w,info = solve(A,b,method="pinv", diagnostics=show)
+    return A,b,w,info
 
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
@@ -85,8 +132,7 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",child=
     if child: # used in parallel implementation!
         return A,b
 
-    squeeze_b = np.array(b.todense()).squeeze()
-    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
+    w, info = solve(A,b,method="lsqr",diagnostics=show)
     
     if testing == True: 
         print "Testing against dense version."
@@ -102,12 +148,12 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",child=
         else:
             print "(db,b) are close!"
 
-        if not np.allclose(stuff[0], dw):
+        if not np.allclose(w, dw):
             print "****** (dw,w) are not CLOSE! *****"
         else:
             print "(dw,w) are close!"
 
-    return A,b,stuff[0]
+    return A,b,w,info
 
 
 class ChildData:
@@ -139,10 +185,13 @@ def child_compute(args):
     t = features * r
     return T,t 
 
-def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
+def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",ncpus=None):
     """Alternative parallel implementation. Based on some intial tests the other version is faster. """
 
-    nprocess = cpu_count()
+    if ncpus:
+        nprocess = ncpus
+    else:
+        nprocess = cpu_count()
     pool = Pool(nprocess,initializer=child_initialize,initargs=(env,w,format))
 
     k = -1
@@ -156,13 +205,11 @@ def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
         A = A + T
         b = b + t
 
-    squeeze_b = np.array(b.todense()).squeeze()
-    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
-    
-    return A,b,stuff[0]
+    w,info = solve(A,b,method="lsqr",diagnostics=show)
+    return A,b,w,info
 
 
-def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
+def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",ncpus=None):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -171,7 +218,10 @@ def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
     Note that "csr" format seems to work best. Should convert to csr for arithmatic operations automatically.
     """
 
-    nprocess = cpu_count()
+    if ncpus:
+        nprocess = ncpus
+    else:
+        nprocess = cpu_count()
     pool = Pool(nprocess)
     indx = chunk(len(D),nprocess)
     results = []
@@ -187,9 +237,8 @@ def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr"):
         A = A + T
         b = b + t
 
-    squeeze_b = np.array(b.todense()).squeeze()
-    stuff = spla.lsqr(A,squeeze_b.T,atol=1e-8,btol=1e-8,show=show)
-    return A,b,stuff[0]
+    w,info = solve(A,b,method="lsqr",diagnostics=show)
+    return A,b,w,info
 
 def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
     """
@@ -236,9 +285,8 @@ def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
         else:
             print "(db,b) are close!"
 
-
-    return B,b,B.dot(b).toarray()[:,0]
-
+    w,info = solve(B,b,method="dot",diagnostics=show)
+    return B,b,w,info
 
 if __name__ == '__main__':
 
