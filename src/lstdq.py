@@ -30,23 +30,21 @@ from utils import sp_create,chunk
 # xnorm : float
 # var : ndarray of float
 
-def solve(A, b, method="pinv", diagnostics = True):
+def solve(A, b, method="pinv"):
     info = {}
     w = None
 
     if method == "pinv":
-        if diagnostics:
-            info['acond'] = la.cond(A)
+        info['acond'] = la.cond(A)
         w = np.dot(la.pinv(A),b)
 
     elif method == "dot":
-        if diagnostics:
-            info['acond'] = la.cond(A)
+        info['acond'] = la.cond(A)
         w = A.dot(b).toarray()[:,0]
 
     elif method == "lsqr":
         squeeze_b = np.array(b.todense()).squeeze()
-        qr_result = spla.lsqr(A,squeeze_b.T, atol=1e-8, btol=1e-8, show=diagnostics)
+        qr_result = spla.lsqr(A,squeeze_b.T, atol=1e-8, btol=1e-8, show=True)
     
         # diagnostics are already computed so we always populate info in this case    
         w = qr_result[0]
@@ -64,7 +62,7 @@ def solve(A, b, method="pinv", diagnostics = True):
 
     return w,info
 
-def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
+def LSTDQ(D,env,w,damping=0.001,testing=False):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -92,13 +90,13 @@ def LSTDQ(D,env,w,damping=0.001,show=False,testing=False):
         A = A + np.outer(features, features - env.gamma * newfeatures)
         b = b + features * r
 
-    w,info = solve(A,b,method="pinv", diagnostics=show)
+    w,info = solve(A,b,method="pinv")
     return A,b,w,info
 
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",child=False):
+def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -132,11 +130,11 @@ def FastLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",child=
     if child: # used in parallel implementation!
         return A,b
 
-    w, info = solve(A,b,method="lsqr",diagnostics=show)
+    w, info = solve(A,b,method="lsqr")
     
     if testing == True: 
         print "Testing against dense version."
-        dA,db,dw = LSTDQ(D,env,w,damping=damping,show=show)        
+        dA,db,dw = LSTDQ(D,env,w,damping=damping)        
 
         if not np.allclose(dA,A.todense()):
             print "***** (dA,A) are not CLOSE! *****"
@@ -185,7 +183,7 @@ def child_compute(args):
     t = features * r
     return T,t 
 
-def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",ncpus=None):
+def AltLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
     """Alternative parallel implementation. Based on some intial tests the other version is faster. """
 
     if ncpus:
@@ -205,11 +203,11 @@ def AltLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",ncpus=N
         A = A + T
         b = b + t
 
-    w,info = solve(A,b,method="lsqr",diagnostics=show)
+    w,info = solve(A,b,method="lsqr")
     return A,b,w,info
 
 
-def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",ncpus=None):
+def ParallelLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -226,7 +224,7 @@ def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",nc
     indx = chunk(len(D),nprocess)
     results = []
     for (i,j) in indx:
-        r = pool.apply_async(FastLSTDQ,(D[i:j],env,w,damping,show,testing,format,True))
+        r = pool.apply_async(FastLSTDQ,(D[i:j],env,w,damping,testing,format,True))
         results.append(r)
         
     k = len(w)
@@ -237,10 +235,10 @@ def ParallelLSTDQ(D,env,w,damping=0.001,show=False,testing=False,format="csr",nc
         A = A + T
         b = b + t
 
-    w,info = solve(A,b,method="lsqr",diagnostics=show)
+    w,info = solve(A,b,method="lsqr")
     return A,b,w,info
 
-def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
+def OptLSTDQ(D,env,w,damping=0.001,testing=True,format="csr"):
     """
     Use paper's suggested optimization method.
 
@@ -272,7 +270,7 @@ def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
 
     if testing:
         print "Testing against dense version."
-        dA,db,dw = LSTDQ(D,env,w,damping=damping,show=show) 
+        dA,db,dw = LSTDQ(D,env,w,damping=damping) 
 
         dB = la.pinv(dA)
         if not np.allclose(dB,B.todense(),atol=1e-6,rtol=0.0):
@@ -285,7 +283,7 @@ def OptLSTDQ(D,env,w,damping=0.001,show=False,testing=True,format="csr"):
         else:
             print "(db,b) are close!"
 
-    w,info = solve(B,b,method="dot",diagnostics=show)
+    w,info = solve(B,b,method="dot")
     return B,b,w,info
 
 if __name__ == '__main__':

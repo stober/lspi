@@ -75,15 +75,15 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         all_policies.append(current)
 
         if method is "dense":
-            A,b,current,info = LSTDQ(D, env, current, show=show)
+            A,b,current,info = LSTDQ(D, env, current)
         elif method is "sparse":
-            A,b,current,info = FastLSTDQ(D, env, current, show=show,format=format)
+            A,b,current,info = FastLSTDQ(D, env, current, format=format)
         elif method is "opt":
-            A,b,current,info = OptLSTDQ(D, env, current, show=show,format=format)
+            A,b,current,info = OptLSTDQ(D, env, current, format=format)
         elif method is "parallel":
-            A,b,current,info = ParallelLSTDQ(D, env, current, show=show, format=format, ncpus=ncpus)
+            A,b,current,info = ParallelLSTDQ(D, env, current, format=format, ncpus=ncpus)
         elif method is "alt":
-            A,b,current,info = AltLSTDQ(D,env,current, show=show, format=format, ncpus=ncpus)
+            A,b,current,info = AltLSTDQ(D, env, current, format=format, ncpus=ncpus)
         else:
             raise ValueError, "Unknown method!"
 
