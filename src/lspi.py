@@ -57,7 +57,7 @@ class Diagnostics:
 
 @timerflag
 @debugflag
-def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "csr", ncpus=None):
+def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "csr", ncpus=None, testing=False):
 
     current = policy0
     all_policies = [current]
@@ -75,15 +75,15 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         all_policies.append(current)
 
         if method is "dense":
-            A,b,current,info = LSTDQ(D, env, current)
+            A,b,current,info = LSTDQ(D, env, current, testing=testing)
         elif method is "sparse":
-            A,b,current,info = FastLSTDQ(D, env, current, format=format)
+            A,b,current,info = FastLSTDQ(D, env, current, format=format, testing=testing)
         elif method is "opt":
-            A,b,current,info = OptLSTDQ(D, env, current, format=format)
+            A,b,current,info = OptLSTDQ(D, env, current, format=format, testing=testing)
         elif method is "parallel":
-            A,b,current,info = ParallelLSTDQ(D, env, current, format=format, ncpus=ncpus)
+            A,b,current,info = ParallelLSTDQ(D, env, current, format=format, ncpus=ncpus, testing=testing)
         elif method is "alt":
-            A,b,current,info = AltLSTDQ(D, env, current, format=format, ncpus=ncpus)
+            A,b,current,info = AltLSTDQ(D, env, current, format=format, ncpus=ncpus, testing=testing)
         else:
             raise ValueError, "Unknown method!"
 
@@ -94,6 +94,14 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
             print diagnostics(iters,current,A)
             for (i,p) in enumerate(all_policies):
                 print "policy: ", i, la.norm(p - current)
+
+        # In general, epsilon should not be treated as a constant. It should
+        # depend at least on cond(A) for the current iteration of LSTDQ. Note
+        # that there is a problem if the linear system is underdetermined. Using
+        # pinv will return a minimum solution (2-norm sense), but the solver may
+        # not return a solution that has minimum norm. The result could be a
+        # problem ever satisfying the termination criterion (even though a
+        # policy has already been found).
 
         for p in all_policies:
             if la.norm(p - current) < epsilon:  

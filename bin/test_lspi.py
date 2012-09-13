@@ -23,10 +23,10 @@ import cPickle as pickle
 
 # Choose what tests to run.
 test_rbf = False
-test_scale= False
+test_scale= True
 test_chainwalk = False
 test_sarsa = False
-test_lspi = True
+test_lspi = False
 test_walls = False
 
 if test_walls:
@@ -54,7 +54,7 @@ if test_lspi:
         pickle.dump(t,open("lspi_trace.pck","w"),pickle.HIGHEST_PROTOCOL)
     
     policy0 = np.zeros(gw.nfeatures())
-    w0, weights0 = LSPI(t, 0.003, gw, policy0, maxiter=100, method="sparse", debug = False, timer = True, show=True)
+    w0, weights0 = LSPI(t, 0.00001, gw, policy0, maxiter=100, method="sparse", testing=False, debug = False, timer = True, show=True)
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)    
     gw.background()
@@ -86,6 +86,7 @@ if test_scale:
     policy0 = np.zeros(gw.nfeatures())
     #w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="alt", debug = False, timer = True, show=False, format="csr")
     w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=False, format="csr",ncpus=6)
+    #w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, format="csr")
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)    
     gw.background()

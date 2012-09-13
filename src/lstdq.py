@@ -14,6 +14,7 @@ import random as pr
 import numpy.linalg as la
 from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG, cpu_count
 from utils import sp_create,chunk
+import sys
 
 #logger = log_to_stderr()
 #logger.setLevel(SUBDEBUG)
@@ -56,6 +57,10 @@ def solve(A, b, method="pinv"):
         info['acond'] = qr_result[6]
         info['xnorm'] = qr_result[7]
         info['var'] = qr_result[8]
+
+    elif method == "spsolve":
+        qr_result = spla.spsolve(A,b)
+        w = qr_result
     
     else:
         raise ValueError, "Unknown solution method!"
@@ -72,6 +77,7 @@ def LSTDQ(D,env,w,damping=0.001,testing=False):
 
     k = -1
     k = len(w)
+    save_w = w
 
     A = np.eye(k) * damping
     b = np.zeros(k)
@@ -107,6 +113,7 @@ def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
 
     k = -1
     k = len(w)
+    save_w = w
 
     A = sp.identity(k,format=format) * damping
     b = sp_create(k,1,format)
@@ -130,11 +137,11 @@ def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
     if child: # used in parallel implementation!
         return A,b
 
-    w, info = solve(A,b,method="lsqr")
+    w, info = solve(A,b,method="spsolve")
     
     if testing == True: 
         print "Testing against dense version."
-        dA,db,dw = LSTDQ(D,env,w,damping=damping)        
+        dA,db,dw,dinfo = LSTDQ(D,env,save_w,damping=damping)        
 
         if not np.allclose(dA,A.todense()):
             print "***** (dA,A) are not CLOSE! *****"
@@ -148,6 +155,17 @@ def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
 
         if not np.allclose(w, dw):
             print "****** (dw,w) are not CLOSE! *****"
+            # dump out the matrices for further analysis
+            # debug code - to be removed
+            if False:
+                np.save("dA",dA)
+                np.save("sA",np.array(A.todense()))
+                np.save("db",db)
+                np.save("sb",np.array(b.todense()))
+                np.save("dw",dw)
+                np.save("sw",w)
+                np.save("save_w",save_w)
+                sys.exit()
         else:
             print "(dw,w) are close!"
 
@@ -194,6 +212,7 @@ def AltLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
 
     k = -1
     k = len(w)
+    save_w = w
 
     A = sp.identity(k,format=format) * damping
     b = sp_create(k,1,format)
@@ -203,7 +222,7 @@ def AltLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
         A = A + T
         b = b + t
 
-    w,info = solve(A,b,method="lsqr")
+    w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 
 
@@ -228,6 +247,7 @@ def ParallelLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
         results.append(r)
         
     k = len(w)
+    save_w = w
     A = sp.identity(k,format=format)
     b = sp_create(k,1,format)
     for r in results:
@@ -235,7 +255,11 @@ def ParallelLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",ncpus=None):
         A = A + T
         b = b + t
 
-    w,info = solve(A,b,method="lsqr")
+    # close out the pool of workers
+    pool.close()
+    pool.join()
+
+    w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 
 def OptLSTDQ(D,env,w,damping=0.001,testing=True,format="csr"):
@@ -249,6 +273,7 @@ def OptLSTDQ(D,env,w,damping=0.001,testing=True,format="csr"):
 
     k = -1
     k = len(w)
+    save_w = w
 
     B = sp.identity(k,format=format) * 1.0/damping
     b = sp_create(k,1,format)
@@ -270,7 +295,7 @@ def OptLSTDQ(D,env,w,damping=0.001,testing=True,format="csr"):
 
     if testing:
         print "Testing against dense version."
-        dA,db,dw = LSTDQ(D,env,w,damping=damping) 
+        dA,db,dw = LSTDQ(D,env,save_w,damping=damping) 
 
         dB = la.pinv(dA)
         if not np.allclose(dB,B.todense(),atol=1e-6,rtol=0.0):
