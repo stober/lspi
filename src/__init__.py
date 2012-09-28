@@ -6,5 +6,5 @@ Date: Friday, November 11 2011
 Description: Init module.
 """
 
-from lspi import LSPI
-from lstdq import LSTDQ, OptLSTDQ, FastLSTDQ, ParallelLSTDQ,AltLSTDQ
+from lspi import LSPI, LSPIRmax
+from lstdq import LSTDQ, OptLSTDQ, FastLSTDQ, ParallelLSTDQ, AltLSTDQ, LSTDQRmax

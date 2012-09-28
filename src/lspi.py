@@ -16,6 +16,8 @@ import pickle
 from lstdq import *
 from utils import debugflag, timerflag, consumer
 import scipy.sparse as sp
+from trackknown import TrackKnown
+from functools import partial
 
 class Diagnostics:
     """
@@ -53,7 +55,30 @@ class Diagnostics:
             if hasattr(self.env,'callback'):
                 self.env.callback(iters, policy)
             return result 
-    
+
+@timerflag
+@debugflag
+def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
+    current = policy0
+    all_policies = [current]
+
+    iters = 0
+    finished = False
+    track = TrackKnown(env.nstates, env.nactions, 1)
+    while iters < maxiter and not finished:
+
+        all_policies.append(current)
+
+        A,b,current,info = LSTDQRmax(D, env, current, track)
+        policy = partial(env.epsilon_linear_policy, 0.1, current) # need to detect/escape cycles?
+        # more trace data
+        t = env.trace(100, policy = policy)
+        D.extend(t)
+
+        iters += 1
+
+    return current, all_policies
+        # TODO : redo the sampling
 
 @timerflag
 @debugflag

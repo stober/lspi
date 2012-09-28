@@ -18,16 +18,36 @@ from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
 from lspi import OptLSTDQ
+from lspi import LSPIRmax
 from td import Sarsa
 import cPickle as pickle
 
 # Choose what tests to run.
 test_rbf = False
-test_scale= True
+test_scale= False
 test_chainwalk = False
 test_sarsa = False
 test_lspi = False
 test_walls = False
+test_pca = False
+test_rmax = True
+
+if test_rmax:
+    gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
+    
+    try:
+        t = pickle.load(open("rmax_trace.pck"))
+    except:
+        t = gw.trace(1000, show = True)
+        pickle.dump(t, open("rmax_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+    policy0 = np.zeros(gw.nfeatures())
+    # TODO - The tolerances for lsqr need to be related to the tolerances for the policy. Otherwise the number of iterations will be far larger than needed.
+    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter=2)    
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)
+    gw.background()
+    gw.mainloop()
 
 if test_walls:
     gw = GridworldGui(nrows=5,ncols=5,endstates= [0], walls=[(1,1),(1,2),(1,3),(2,1),(2,2),(2,3),(3,1),(3,2),(3,3)])
@@ -104,4 +124,21 @@ if test_rbf:
     gw.background()
     gw.mainloop()
 
+if test_pca:
+    endstates = [32, 2016, 1024, 1040, 1056, 1072]
+    gw = GridworldGui(nrows=32,ncols=64,endstates=endstates,walls=[])
+    try:
+        t = pickle.load(open("pca_trace.pck"))
+    except:
+        t = gw.trace(100000)
+        pickle.dump(t,open("pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+
+    policy0 = np.zeros(gw.nfeatures())
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=True, format="csr",ncpus=6)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
+    gw.background()
+    gw.mainloop()
+    
 

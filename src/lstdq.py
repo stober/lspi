@@ -102,6 +102,62 @@ def LSTDQ(D,env,w,damping=0.001,testing=False):
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
+def LSTDQRmax(D, env, w, knowledge, damping=0.001, testing=False, rmax = 1.0):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+    damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
+    """
+
+    k = -1
+    k = len(w)
+    save_w = w
+
+    A = np.eye(k) * damping
+    b = np.zeros(k)
+
+    knowledge.init(D) # initialize knowledge
+    grmax = rmax / (1.0 - env.gamma)
+
+    cnt = 0
+    for (s,a,r,ns,na) in D:
+
+        print cnt
+        cnt += 1
+
+        if knowledge.known_pair(s,a) and knowledge.known_state(ns):
+
+            features = env.phi(s,a)
+
+            # we may want to evaluate policies whose features are
+            # different from ones that can express the true value
+            # function, e.g. tabular
+
+            next = env.linear_policy(w, ns)
+            newfeatures = env.phi(ns, next)
+
+            A = A + np.outer(features, features - env.gamma * newfeatures)
+            b = b + features * r
+
+        elif knowledge.known_pair(s,a):
+            features = env.phi(s,a)
+            A = A + np.outer(features, features)
+            b = b + features * (r + env.gamma * grmax)          
+
+        else:
+            features = env.phi(s,a)
+            A = A + np.outer(features,features)
+            b = b + features * grmax
+
+        for na in knowledge.unknown(s):
+            features = env.phi(s,na)
+            A = A + np.outer(features,features)
+            b = b + features * grmax
+
+    w,info = solve(A,b,method="pinv")
+    return A,b,w,info
+
 def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
     """
     D : source of samples (s,a,r,s',a')
