@@ -43,7 +43,7 @@ if test_rmax:
 
     policy0 = np.zeros(gw.nfeatures())
     # TODO - The tolerances for lsqr need to be related to the tolerances for the policy. Otherwise the number of iterations will be far larger than needed.
-    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter=2)    
+    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter=5)    
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)
     gw.background()

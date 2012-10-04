@@ -75,6 +75,7 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
         t = env.trace(100, policy = policy)
         D.extend(t)
 
+        track.diagnostics()
         iters += 1
 
     return current, all_policies
