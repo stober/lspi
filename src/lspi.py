@@ -65,6 +65,8 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
     iters = 0
     finished = False
     track = TrackKnown(env.nstates, env.nactions, 1)
+    track.init(D) # initialize knowledge
+   
     while iters < maxiter and not finished:
 
         all_policies.append(current)
@@ -72,10 +74,13 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
         A,b,current,info = LSTDQRmax(D, env, current, track)
         policy = partial(env.epsilon_linear_policy, 0.1, current) # need to detect/escape cycles?
         # more trace data
-        t = env.trace(100, policy = policy)
-        D.extend(t)
+        t = env.trace(100, policy = policy, additional_estates = track.goals)
 
+        track.resample(D,t) # adds new samples
+        #track.reset_goals()
         track.diagnostics()
+
+
         iters += 1
 
     return current, all_policies

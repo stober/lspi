@@ -102,7 +102,7 @@ def LSTDQ(D,env,w,damping=0.001,testing=False):
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-def LSTDQRmax(D, env, w, knowledge, damping=0.001, testing=False, rmax = 1.0):
+def LSTDQRmax(D, env, w, track, damping=0.001, testing=False, rmax = 1.0):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
@@ -117,16 +117,13 @@ def LSTDQRmax(D, env, w, knowledge, damping=0.001, testing=False, rmax = 1.0):
     A = np.eye(k) * damping
     b = np.zeros(k)
 
-    knowledge.init(D) # initialize knowledge
     grmax = rmax / (1.0 - env.gamma)
 
     cnt = 0
     for (s,a,r,ns,na) in D:
-
-        print cnt
         cnt += 1
 
-        if knowledge.known_pair(s,a) and knowledge.known_state(ns):
+        if track.known_pair(s,a) and track.known_state(ns):
 
             features = env.phi(s,a)
 
@@ -140,18 +137,23 @@ def LSTDQRmax(D, env, w, knowledge, damping=0.001, testing=False, rmax = 1.0):
             A = A + np.outer(features, features - env.gamma * newfeatures)
             b = b + features * r
 
-        elif knowledge.known_pair(s,a):
+        elif track.known_pair(s,a):
             features = env.phi(s,a)
             A = A + np.outer(features, features)
             b = b + features * (r + env.gamma * grmax)          
-
         else:
             features = env.phi(s,a)
             A = A + np.outer(features,features)
             b = b + features * grmax
 
-        for na in knowledge.unknown(s):
-            features = env.phi(s,na)
+        # if not track.known_state(s):
+        #     track.add_goal(s)
+
+        # if not track.known_state(ns):
+        #     track.add_goal(ns)
+
+        for una in track.unknown(s):
+            features = env.phi(s,una)
             A = A + np.outer(features,features)
             b = b + features * grmax
 
