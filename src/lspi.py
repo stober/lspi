@@ -71,14 +71,13 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
 
         all_policies.append(current)
 
-        A,b,current,info = LSTDQRmax(D, env, current, track)
+        A,b,current,info = FastLSTDQRmax(D, env, current, track)
         policy = partial(env.epsilon_linear_policy, 0.1, current) # need to detect/escape cycles?
         
         # more trace data
         t = env.trace(100, policy = policy, reset_on_cycle = True)
 
         track.resample(D,t) # adds new samples
-        #track.reset_goals()
         track.diagnostics()
 
         for p in all_policies:

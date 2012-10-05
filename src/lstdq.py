@@ -77,7 +77,6 @@ def LSTDQ(D,env,w,damping=0.001,testing=False):
 
     k = -1
     k = len(w)
-    save_w = w
 
     A = np.eye(k) * damping
     b = np.zeros(k)
@@ -112,28 +111,18 @@ def LSTDQRmax(D, env, w, track, damping=0.001, testing=False, rmax = 1.0):
 
     k = -1
     k = len(w)
-    save_w = w
 
     A = np.eye(k) * damping
     b = np.zeros(k)
 
     grmax = rmax / (1.0 - env.gamma)
 
-    cnt = 0
     for (s,a,r,ns,na) in D:
-        cnt += 1
 
         if track.known_pair(s,a) and track.known_state(ns):
-
             features = env.phi(s,a)
-
-            # we may want to evaluate policies whose features are
-            # different from ones that can express the true value
-            # function, e.g. tabular
-
             next = env.linear_policy(w, ns)
             newfeatures = env.phi(ns, next)
-
             A = A + np.outer(features, features - env.gamma * newfeatures)
             b = b + features * r
 
@@ -141,16 +130,11 @@ def LSTDQRmax(D, env, w, track, damping=0.001, testing=False, rmax = 1.0):
             features = env.phi(s,a)
             A = A + np.outer(features, features)
             b = b + features * (r + env.gamma * grmax)          
+
         else:
             features = env.phi(s,a)
             A = A + np.outer(features,features)
             b = b + features * grmax
-
-        # if not track.known_state(s):
-        #     track.add_goal(s)
-
-        # if not track.known_state(ns):
-        #     track.add_goal(ns)
 
         for una in track.unknown(s):
             features = env.phi(s,una)
@@ -159,6 +143,57 @@ def LSTDQRmax(D, env, w, track, damping=0.001, testing=False, rmax = 1.0):
 
     w,info = solve(A,b,method="pinv")
     return A,b,w,info
+
+def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", rmax = 1.0):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+
+    Note that "csr" format seems to work best. Should convert to csr for arithmatic operations automatically.
+    """
+
+    k = -1
+    k = len(w)
+    A = sp.identity(k,format=format) * damping
+    b = sp_create(k,1,format)
+    grmax = rmax / (1.0 - env.gamma)
+
+    for (s,a,r,ns,na) in D:
+
+        # we may want to evaluate policies whose features are
+        # different from ones that can express the true value
+        # function, e.g. tabular
+        if track.known_pair(s,a) and track.known_state(ns):
+            features = env.phi(s, a, sparse=True, format=format)
+            next = env.linear_policy(w, ns)
+            newfeatures = env.phi(ns, next, sparse=True, format=format)
+            nf = features - env.gamma * newfeatures
+            T = sp.kron(features, nf.T)
+            A = A + T
+            b = b + features * r 
+
+        elif track.known_pair(s,a):
+            features = env.phi(s, a, sparse=True, format=format)
+            T = sp.kron(features, features.T)
+            A = A + T
+            b = b + features * (r + env.gamma * grmax)
+
+        else:            
+            features = env.phi(s, a, sparse=True, format=format)
+            T = sp.kron(features, features.T)
+            A = A + T
+            b = b + features * grmax
+
+        for una in track.unknown(s):
+            features = env.phi(s, una, sparse=True, format=format)
+            T = sp.kron(features, features.T)
+            A = A + T
+            b = b + features * grmax
+
+    w, info = solve(A,b,method="spsolve")
+    return A,b,w,info
+
 
 def FastLSTDQ(D,env,w,damping=0.001,testing=False,format="csr",child=False):
     """
