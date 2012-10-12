@@ -58,7 +58,7 @@ class Diagnostics:
 
 @timerflag
 @debugflag
-def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
+def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show = False, resample_epsilon = 0.1, rmax = 1.0):
     current = policy0
     all_policies = [current]
 
@@ -67,27 +67,38 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10):
     track = TrackKnown(env.nstates, env.nactions, 1)
     track.init(D) # initialize knowledge
    
+    print "Resample epsilon: ", resample_epsilon
+
+    if show:
+        diagnostics = Diagnostics(env)
+
     while iters < maxiter and not finished:
 
         all_policies.append(current)
 
         A,b,current,info = FastLSTDQRmax(D, env, current, track)
-        policy = partial(env.epsilon_linear_policy, 0.1, current) # need to detect/escape cycles?
+        policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
         
         # more trace data
-        t = env.trace(100, policy = policy, reset_on_cycle = True)
+        t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=True)
 
         track.resample(D,t) # adds new samples
         track.diagnostics()
 
-        for p in all_policies:
-            if la.norm(p - current) < epsilon:  
-                finished = True
+        if show:
+            print diagnostics(iters,current,A)
+            for (i,p) in enumerate(all_policies):
+                print "policy: ", i, la.norm(p - current)
 
         iters += 1
 
+        print "Iterations: ", iters
+
+        for p in all_policies:
+            if la.norm(p - current) < epsilon and track.all_known():  
+                finished = True
+
     return current, all_policies
-        # TODO : redo the sampling
 
 @timerflag
 @debugflag
