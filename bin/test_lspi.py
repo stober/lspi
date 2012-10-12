@@ -35,16 +35,17 @@ test_rmax = True
 if test_rmax:
     gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
     
-    try:
-        raise ValueError # for new trace
-        t = pickle.load(open("rmax_trace.pck"))
-    except:
-        t = gw.trace(100, show = True)
-        pickle.dump(t, open("rmax_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+    # try:
+    #     raise ValueError # for new trace
+    #     t = pickle.load(open("rmax_trace.pck"))
+    # except:
+    #     t = gw.trace(100, show = True)
+    #     pickle.dump(t, open("rmax_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
 
     policy0 = np.zeros(gw.nfeatures())
+    t = []
     # TODO - The tolerances for lsqr need to be related to the tolerances for the policy. Otherwise the number of iterations will be far larger than needed.
-    w0, weights0 = LSPIRmax(t, 0.0003, gw, policy0, maxiter = 100, show = True, resample_epsilon = 0.1, rmax = 10)
+    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter = 1000, show = True, resample_epsilon = 0.1, rmax = 1000)
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)
     gw.background()
