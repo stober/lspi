@@ -16,6 +16,8 @@ import pickle
 from lstdq import *
 from utils import debugflag, timerflag, consumer
 import scipy.sparse as sp
+from trackknown import TrackKnown
+from functools import partial
 
 class Diagnostics:
     """
@@ -34,7 +36,10 @@ class Diagnostics:
                     self.Q[i,j] = np.dot(self.env.phi(i,j), policy)
         
             if sp.issparse(A):
-                [u,s,v] = sp.linalg.svds(A)
+                try:
+                    [u,s,v] = sp.linalg.svds(A)
+                except:
+                    s = [np.nan] 
             else:
                 [u,s,v] = la.svd(A)
             result = """
@@ -53,7 +58,54 @@ class Diagnostics:
             if hasattr(self.env,'callback'):
                 self.env.callback(iters, policy)
             return result 
-    
+
+@timerflag
+@debugflag
+def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show = False, resample_epsilon = 0.1, rmax = 1.0):
+    current = policy0
+    all_policies = [current]
+
+    iters = 0
+    finished = False
+    track = TrackKnown(env.nstates, env.nactions, 1)
+    track.init(D) # initialize knowledge
+    print "Pre uniq: ", len(D)
+    D = track.uniq(D)
+    print "Post uniq: ", len(D)
+
+    print "Resample epsilon: ", resample_epsilon
+
+    if show:
+        diagnostics = Diagnostics(env)
+
+    while iters < maxiter and not finished:
+
+        all_policies.append(current)
+
+        # A,b,current,info = LSTDQRmax(D, env, current, track, rmax=rmax)
+        A,b,current,info = FastLSTDQRmax(D, env, current, track, rmax=rmax)
+        policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
+        
+        # more trace data
+        t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=False)
+        print "Trace length: ", len(t)
+        track.resample(D, t, take_all=False) # adds new samples
+        track.diagnostics()
+
+        if show:
+            print diagnostics(iters,current,A)
+            # for (i,p) in enumerate(all_policies):
+            #     print "policy: ", i, la.norm(p - current)
+
+        iters += 1
+
+        print "Iterations: ", iters
+
+        for p in all_policies:
+            if la.norm(p - current) < epsilon and track.all_known():  
+                finished = True
+
+    return current, all_policies
 
 @timerflag
 @debugflag
