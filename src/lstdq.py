@@ -15,6 +15,7 @@ import numpy.linalg as la
 from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG, cpu_count
 from utils import sp_create,chunk
 import sys
+import time
 
 #logger = log_to_stderr()
 #logger.setLevel(SUBDEBUG)
@@ -159,6 +160,7 @@ def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", 
     b = sp_create(k,1,format)
     grmax = rmax / (1.0 - env.gamma)
 
+    loop_start_time = time.time()
     for (s,a,r,ns,na) in D:
 
         # we may want to evaluate policies whose features are
@@ -190,8 +192,16 @@ def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", 
             T = sp.kron(features, features.T)
             A = A + T
             b = b + features * grmax
+    loop_end_time = time.time()
 
+    solve_start_time = time.time()
     w, info = solve(A,b,method="spsolve")
+    solve_end_time = time.time()
+
+    print "Loop time: ", loop_end_time - loop_start_time
+    print "Solve time: ", solve_end_time - solve_start_time
+
+    sys.exit()
     return A,b,w,info
 
 
