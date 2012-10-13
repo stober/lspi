@@ -87,7 +87,7 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
         policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
         
         # more trace data
-        t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=True)
+        t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=False)
         print "Trace length: ", len(t)
         track.resample(D, t, take_all=False) # adds new samples
         track.diagnostics()
