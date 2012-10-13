@@ -36,7 +36,10 @@ class Diagnostics:
                     self.Q[i,j] = np.dot(self.env.phi(i,j), policy)
         
             if sp.issparse(A):
-                [u,s,v] = sp.linalg.svds(A)
+                try:
+                    [u,s,v] = sp.linalg.svds(A)
+                except:
+                    s = [np.nan] 
             else:
                 [u,s,v] = la.svd(A)
             result = """
@@ -66,7 +69,10 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
     finished = False
     track = TrackKnown(env.nstates, env.nactions, 1)
     track.init(D) # initialize knowledge
-   
+    print "Pre uniq: ", len(D)
+    D = track.uniq(D)
+    print "Post uniq: ", len(D)
+
     print "Resample epsilon: ", resample_epsilon
 
     if show:
@@ -76,15 +82,14 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
 
         all_policies.append(current)
 
-        A,b,current,info = LSTDQRmax(D, env, current, track, rmax=rmax)
+        # A,b,current,info = LSTDQRmax(D, env, current, track, rmax=rmax)
+        A,b,current,info = FastLSTDQRmax(D, env, current, track, rmax=rmax)
         policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
         
         # more trace data
-        #t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=True)
-        next_action = policy(env.current)
-        pstate, paction, reward, state = env.move(next_action)
-        t = [(pstate, paction, reward, state,None)]
-        track.resample(D, t, take_all=True) # adds new samples
+        t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=True)
+        print "Trace length: ", len(t)
+        track.resample(D, t, take_all=False) # adds new samples
         track.diagnostics()
 
         if show:
