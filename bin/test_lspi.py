@@ -14,13 +14,14 @@ from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
 from gridworld.gridworld8 import wall_pattern
 from gridworld.gridworldgui import GridworldGui, RBFGridworldGui
-from lspi import LSTDQ
+from lspi import LSTDQ, Test
 from lspi import LSPI
 from lspi import FastLSTDQ
 from lspi import OptLSTDQ
 from lspi import LSPIRmax
 from td import Sarsa
 import cPickle as pickle
+import numpy.linalg as la
 
 # Choose what tests to run.
 test_rbf = False
@@ -29,8 +30,9 @@ test_chainwalk = False
 test_sarsa = False
 test_lspi = False
 test_walls = False
-test_pca = True
+test_pca = False
 test_rmax = False
+test_prof = True
 
 if test_rmax:
     gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
@@ -125,6 +127,21 @@ if test_rbf:
     gw.set_arrows(pi)    
     gw.background()
     gw.mainloop()
+
+if test_prof:
+    endstates = [32, 2016, 1024, 1040, 1056, 1072]
+    gw = GridworldGui(nrows=32,ncols=64,endstates=endstates,walls=[])
+    try:
+        t = pickle.load(open("pca_trace.pck"))
+    except:
+        t = gw.trace(100000)
+        pickle.dump(t,open("pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+    policy0 = np.zeros(gw.nfeatures())
+    A,b = Test(t, gw, policy0,method="fast")
+    C,d = Test(t, gw, policy0,method="slow")
+
+    la.norm(A.toarray() - C.toarray())
 
 if test_pca:
     endstates = [32, 2016, 1024, 1040, 1056, 1072]

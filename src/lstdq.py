@@ -13,7 +13,7 @@ import numpy.random as npr
 import random as pr
 import numpy.linalg as la
 from multiprocessing import Pool, Queue, Process, log_to_stderr, SUBDEBUG, cpu_count
-from utils import sp_create,chunk
+from utils import sp_create,chunk,sp_create_dict
 import sys
 import time
 
@@ -145,6 +145,67 @@ def LSTDQRmax(D, env, w, track, damping=0.001, testing=False, rmax = 1.0):
     w,info = solve(A,b,method="pinv")
     return A,b,w,info
 
+def Test(D, env, w, method = "fast"):
+    k = -1
+    k = len(w)
+    save_w = w
+
+    if method is "slow":
+        format = 'csr'
+        #A = sp.identity(k,format=format) * damping
+        A = sp_create(k,k,format)
+        b = sp_create(k,1,format)
+    elif method is "fast":
+        A = {}
+        b = {}
+    else:
+        pass
+    
+    loop_start_time = time.time()
+    for (s,a,r,ns,na) in D:
+
+        # raw feature format (vals, rows, cols, dim1, dim2)
+
+        if method is "slow":
+            format = 'csr'
+            features = env.phi(s, a, sparse=True, format=format)
+            next = env.linear_policy(w, ns)
+            newfeatures = env.phi(ns, next, sparse=True, format=format)
+            nf = features - env.gamma * newfeatures
+            T = sp.kron(features, nf.T)
+            A = A + T
+            b = b + features * r
+
+        elif method is "fast":
+            format = 'rawdict'
+            features = env.phi(s, a, sparse=True, format=format)
+            next = env.linear_policy(w, ns)
+            newfeatures = env.phi(ns, next, sparse=True, format=format)
+
+            # for 1-dim array on vals, rows matter
+            nf = features.copy()
+            for i,v in newfeatures.items():
+                nf[i] = nf.get(i,0) - env.gamma * v
+
+            for i,v in features.items():
+                for j,s in nf.items():
+                    A[i,j] = A.get((i,j), 0) +  v * s
+                b[i] = b.get(i,0) + v * r
+
+        else:
+            pass
+
+
+    if method is "fast":
+        A = sp_create_dict(A,k,k,format='csr')
+        b = sp_create_dict(b,k,1,format='csr')
+
+    loop_end_time = time.time()
+    print "Loop time: ", loop_end_time - loop_start_time
+
+    return A,b
+
+
 def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", rmax = 1.0):
     """
     D : source of samples (s,a,r,s',a')
@@ -160,7 +221,6 @@ def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", 
     b = sp_create(k,1,format)
     grmax = rmax / (1.0 - env.gamma)
 
-    loop_start_time = time.time()
     for (s,a,r,ns,na) in D:
 
         # we may want to evaluate policies whose features are
@@ -192,16 +252,8 @@ def FastLSTDQRmax(D, env, w, track, damping=0.001, testing=False, format="csr", 
             T = sp.kron(features, features.T)
             A = A + T
             b = b + features * grmax
-    loop_end_time = time.time()
 
-    solve_start_time = time.time()
     w, info = solve(A,b,method="spsolve")
-    solve_end_time = time.time()
-
-    print "Loop time: ", loop_end_time - loop_start_time
-    print "Solve time: ", solve_end_time - solve_start_time
-
-    sys.exit()
     return A,b,w,info
 
 
