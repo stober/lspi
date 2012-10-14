@@ -39,16 +39,17 @@ def allclose(A,B):
     if sp.issparse(A):
         A = A.toarray()
     if sp.issparse(B):
-        B = B.toarray()
-    return np.allclose(A,B)
+        B = B.toarray().reshape(A.shape)
+
+    return np.allclose(A,B.reshape(A.shape))
 
 def compare(method1, method2, D, env, w, damping=0.001):
     """
     Run two methods side by side and compare the results.
     """
 
-    A,b,w,info1 = method1(D,env,w,damping=damping)        
-    C,d,x,info2 = method2(D,env,w,damping=damping)
+    A,b,x,info1 = method1(D,env,w,damping=damping)        
+    C,d,y,info2 = method2(D,env,w,damping=damping)
 
     # Note: if testing Opt method may need to create a wrapper method that inverts B prior to the method call
     if not allclose(A,C):
@@ -61,10 +62,10 @@ def compare(method1, method2, D, env, w, damping=0.001):
     else:
         print "(b,d) are close!"
 
-    if not allclose(w, x):
-        print "****** (x,w) are not CLOSE! *****"
+    if not allclose(x, y):
+        print "****** (x,y) are not CLOSE! *****"
     else:
-        print "(dw,w) are close!"
+        print "(x,y) are close!"
 
     # dump stuff out here if needed
         
