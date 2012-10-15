@@ -4,7 +4,7 @@
 
 Simple class to track knowledge of states and actions. Based on 
 
-L. Li, M. L. Littman, and C. R. Mansley, “Online exploration in least-squares policy iteration” AAMAS, 2009.
+L. Li, M. L. Littman, and C. R. Mansley, "Online exploration in least-squares policy iteration" AAMAS, 2009.
 '''
 import numpy as np
 import pdb
@@ -19,7 +19,7 @@ class TrackKnown:
         self.nstates = nstates
         self.nactions = nactions
         self.mcount = mcount
-        self.counts = np.zeros(nstates, nactions)
+        self.counts = np.zeros((nstates, nactions))
 
     def init(self, samples):
         for (s,a,r,ns,na) in samples:
