@@ -68,10 +68,13 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
     iters = 0
     finished = False
     track = TrackKnown(env.nstates, env.nactions, 1)
-    track.init(D) # initialize knowledge
+
+    # TODO: need to couple track object with sample set more tightly.
     print "Pre uniq: ", len(D)
     D = track.uniq(D)
     print "Post uniq: ", len(D)
+
+    track.init(D) # initialize knowledge
 
     print "Resample epsilon: ", resample_epsilon
 
@@ -83,7 +86,10 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
         all_policies.append(current)
 
         # A,b,current,info = LSTDQRmax(D, env, current, track, rmax=rmax)
+        start_time = time.time()
         A,b,current,info = FastLSTDQRmax(D, env, current, track, rmax=rmax)
+        end_time = time.time()
+        print "Loop time: ", end_time - start_time
         policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
         
         # more trace data
@@ -109,7 +115,7 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
 
 @timerflag
 @debugflag
-def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, format = "csr", ncpus=None, testing=False):
+def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, ncpus=None):
 
     current = policy0
     all_policies = [current]
@@ -127,15 +133,13 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         all_policies.append(current)
 
         if method is "dense":
-            A,b,current,info = LSTDQ(D, env, current, testing=testing)
+            A,b,current,info = LSTDQ(D, env, current)
         elif method is "sparse":
-            A,b,current,info = FastLSTDQ(D, env, current, format=format, testing=testing)
+            A,b,current,info = FastLSTDQ(D, env, current)
         elif method is "opt":
-            A,b,current,info = OptLSTDQ(D, env, current, format=format, testing=testing)
+            A,b,current,info = OptLSTDQ(D, env, current)
         elif method is "parallel":
-            A,b,current,info = ParallelLSTDQ(D, env, current, format=format, ncpus=ncpus, testing=testing)
-        elif method is "alt":
-            A,b,current,info = AltLSTDQ(D, env, current, format=format, ncpus=ncpus, testing=testing)
+            A,b,current,info = ParallelLSTDQ(D, env, current, ncpus=ncpus)
         else:
             raise ValueError, "Unknown method!"
 
@@ -152,7 +156,7 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         # that there is a problem if the linear system is underdetermined. Using
         # pinv will return a minimum solution (2-norm sense), but the solver may
         # not return a solution that has minimum norm. The result could be a
-        # problem ever satisfying the termination criterion (even though a
+        # problem never satisfying the termination criterion (even though a
         # policy has already been found).
 
         for p in all_policies:
