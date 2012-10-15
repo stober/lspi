@@ -87,7 +87,7 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
         # more trace data
         t = env.trace(1000, policy = policy, reset_on_cycle = False, reset_on_endstate = False, stop_on_cycle=True)
         print "Trace length: ", len(t)
-        track.resample(D, t, take_all=False) # adds new samples
+        track.extend(t, take_all=False) # adds new samples
         track.diagnostics()
 
         if show:
