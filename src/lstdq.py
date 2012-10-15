@@ -132,10 +132,10 @@ def dict_loop(D,env,w,damping=0.001):
         for i,v in newfeatures.items():
             nf[i] = nf.get(i,0) - env.gamma * v
 
-        for i,v in features.items():
-            for j,s in nf.items():
-                A[i,j] = A.get((i,j), 0) +  v * s
-            b[i] = b.get(i,0) + v * r
+        for i,v1 in features.items():
+            for j,v2 in nf.items():
+                A[i,j] = A.get((i,j), 0) +  v1 * v2
+            b[i] = b.get(i,0) + v1 * r
 
     # convert to sparse matrices since these could be large
     A = sp_create_dict(A,k,k,format='csr')
@@ -274,6 +274,58 @@ def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
 
     return A,b
 
+def drmax_loop(D, env, w, track, damping=0.001, rmax=1.0):
+    """
+    Dictionary rmax loop.
+    """
+    k = len(w)
+    A = {(i,i) : damping for i in xrange(k)}
+    b = {}
+    grmax = rmax / (1.0 - env.gamma)
+
+
+    for (s,a,r,ns,na) in D:
+        if track.known_pair(s,a) and track.known_state(ns):
+            features = env.phi(s, a, sparse=True, format='rawdict')
+            next = env.linear_policy(w, ns)
+            newfeatures = env.phi(ns, next, sparse=True, format='rawdict')
+
+            nf = features.copy()
+            for i,v in newfeatures.items():
+                nf[i] = nf.get(i,0) - env.gamma * v
+
+            for i,v1 in features.items():
+                for j,v2 in nf.items():
+                    A[i,j] = A.get((i,j), 0) +  v1 * v2
+                b[i] = b.get(i,0) + v1 * r
+
+        elif track.known_pair(s,a):
+            features = env.phi(s, a, sparse=True, format='rawdict')
+            for i,v1 in features.items():
+                for j,v2 in features.items():
+                    A[i,j] = A.get((i,j), 0) + v1 * v2
+                b[i] = b.get(i,0) + v1 * (r + env.gamma * grmax)
+        
+        else:            
+            features = env.phi(s, a, sparse=True, format='rawdict')
+            for i,v1 in features.items():
+                for j,v2 in features.items():
+                    A[i,j] = A.get((i,j), 0) + v1 * v2
+                b[i] = b.get(i,0) + v1 * grmax
+
+        for una in track.unknown(s):
+            features = env.phi(s, una, sparse=True, format='rawdict')
+            for i,v1 in features.items():
+                for j,v2 in features.items():
+                    A[i,j] = A.get((i,j), 0) + v1 * v2
+                b[i] = b.get(i,0) + v1 * grmax
+
+    A = sp_create_dict(A,k,k,format='csr')
+    b = sp_create_dict(b,k,1,format='csr')
+    return A,b
+
+
+
 def OptLSTDQ(D,env,w,damping=0.001):
     """
     Use paper's suggested optimization method.
@@ -356,6 +408,20 @@ def SparseLSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 
+def FastLSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+    track : an object that records what is known
+    damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
+    rmax : the maximum reward
+    """
+    A,b = drmax_loop(D,env,w,track,damping,rmax)
+    w,info = solve(A,b,method="spsolve")
+    return A,b,w,info
+  
+
 def ParallelLSTDQ(D,env,w,damping=0.001,ncpus=None):
     """
     D : source of samples (s,a,r,s',a')
@@ -401,5 +467,5 @@ if __name__ == '__main__':
     t = pickle.load(open("/Users/stober/wrk/lspi/bin/rmax_trace.pck"))
     policy0 = np.zeros(gw.nfeatures())
     track = TrackKnown(gw.nstates, gw.nactions, 1)
-    compare(LSTDQRmax, SparseLSTDQRmax, t, gw, policy0, track)
+    compare(LSTDQ, FastLSTDQ, t, gw, policy0)
  
