@@ -138,7 +138,7 @@ if test_pca:
 
 
     policy0 = np.zeros(gw.nfeatures())
-    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter = 100000, show = True, resample_epsilon = 0.5, rmax = 1000)
+    w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter = 100000, show = True, resample_epsilon = 0.0, rmax = 1000)
     # w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter=100)
     # w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=True, format="csr",ncpus=6)
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]

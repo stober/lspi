@@ -40,14 +40,20 @@ class TrackKnown:
                     self.counts[s,a] += 1
                     samples.append((s,a,r,ns,na))
 
+    def all_known(self):
+        if (self.counts >= self.mcount).all():
+            return True
+        else:
+            return False
+
     def known_pair(self,s,a):
-        if self.counts[s,a] > self.mcount:
+        if self.counts[s,a] >= self.mcount:
             return True
         else:
             return False
 
     def known_state(self,s):
-        if np.greater(self.counts[s,:],self.mcount).all():
+        if np.greater_equal(self.counts[s,:],self.mcount).all():
             return True
         else:
             return False
@@ -57,4 +63,5 @@ class TrackKnown:
         return np.where(self.counts[s,:] < self.mcount)[0]
 
     def diagnostics(self):
-        pass
+        states, actions = np.nonzero(self.counts < self.mcount)
+        print "Unknown states: ", len(np.unique(states))

@@ -421,6 +421,42 @@ def FastLSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
   
+def ParallelLSTDQRmax(D,env,w,track,damping=0.001,rmax=1.0,ncpus=None):
+    """
+    D : source of samples (s,a,r,s',a')
+    env: environment contianing k,phi,gamma
+    w : weights for the linear policy evaluation
+    track : an object that records what is known
+    damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
+    rmax : the maximum reward
+    ncpus : the number of cpus to use
+    """
+    if ncpus:
+        nprocess = ncpus
+    else:
+        nprocess = cpu_count()
+    
+    pool = Pool(nprocess)
+    indx = chunk(len(D),nprocess)
+    results = []
+    for (i,j) in indx:
+        r = pool.apply_async(drmax_loop,(D[i:j],env,w,track,0.0,rmax)) # note that damping needs to be zero here
+        results.append(r)
+        
+    k = len(w)
+    A = sp.identity(k,format='csr') * damping
+    b = sp_create(k,1,'csr')
+    for r in results:
+        T,t = r.get()
+        A = A + T
+        b = b + t
+
+    # close out the pool of workers
+    pool.close()
+    pool.join()
+
+    w,info = solve(A,b,method="spsolve")
+    return A,b,w,info
 
 def ParallelLSTDQ(D,env,w,damping=0.001,ncpus=None):
     """
@@ -467,5 +503,5 @@ if __name__ == '__main__':
     t = pickle.load(open("/Users/stober/wrk/lspi/bin/rmax_trace.pck"))
     policy0 = np.zeros(gw.nfeatures())
     track = TrackKnown(gw.nstates, gw.nactions, 1)
-    compare(LSTDQ, FastLSTDQ, t, gw, policy0)
+    compare(LSTDQRmax, ParallelLSTDQRmax, t, gw, policy0, track)
  
