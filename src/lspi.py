@@ -67,29 +67,21 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
 
     iters = 0
     finished = False
-    track = TrackKnown(env.nstates, env.nactions, 1)
-
-    # TODO: need to couple track object with sample set more tightly.
-    print "Pre uniq: ", len(D)
-    D = track.uniq(D)
-    print "Post uniq: ", len(D)
-
-    track.init(D) # initialize knowledge
-
-    print "Resample epsilon: ", resample_epsilon
+    track = TrackKnown(D, env.nstates, env.nactions, 1)
 
     if show:
         diagnostics = Diagnostics(env)
 
     while iters < maxiter and not finished:
 
+        print "Iterations: ", iters
         all_policies.append(current)
 
-        # A,b,current,info = LSTDQRmax(D, env, current, track, rmax=rmax)
         start_time = time.time()
-        A,b,current,info = ParallelLSTDQRmax(D, env, current, track, rmax=rmax)
+        A,b,current,info = ParallelLSTDQRmax(track, env, current, rmax=rmax)
         end_time = time.time()
         print "Loop time: ", end_time - start_time
+
         policy = partial(env.epsilon_linear_policy, resample_epsilon, current) # need to detect/escape cycles?
         
         # more trace data
@@ -100,16 +92,13 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
 
         if show:
             print diagnostics(iters,current,A)
-            # for (i,p) in enumerate(all_policies):
-            #     print "policy: ", i, la.norm(p - current)
 
         iters += 1
-
-        print "Iterations: ", iters
 
         for p in all_policies:
             if la.norm(p - current) < epsilon and track.all_known():  
                 finished = True
+                print "Finished"
 
     return current, all_policies
 

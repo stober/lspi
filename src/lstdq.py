@@ -207,7 +207,7 @@ def sopt_loop(D,env,w,damping=0.001):
 
     return B,b
 
-def rmax_loop(D,env,w,track,damping=0.001,rmax=1.0):
+def rmax_loop(D,env,w,damping=0.001,rmax=1.0):
     """
     Rmax loop with numpy matrices.
     """
@@ -217,13 +217,13 @@ def rmax_loop(D,env,w,track,damping=0.001,rmax=1.0):
     grmax = rmax / (1.0 - env.gamma)
 
     for (s,a,r,ns,na) in D:
-        if track.known_pair(s,a) and track.known_state(ns):
+        if D.known_pair(s,a) and D.known_state(ns):
             features = env.phi(s,a)
             next = env.linear_policy(w, ns)
             newfeatures = env.phi(ns, next)
             A = A + np.outer(features, features - env.gamma * newfeatures)
             b = b + features * r
-        elif track.known_pair(s,a):
+        elif D.known_pair(s,a):
             features = env.phi(s,a)
             A = A + np.outer(features, features)
             b = b + features * (r + env.gamma * grmax)          
@@ -231,14 +231,14 @@ def rmax_loop(D,env,w,track,damping=0.001,rmax=1.0):
             features = env.phi(s,a)
             A = A + np.outer(features,features)
             b = b + features * grmax
-        for una in track.unknown(s):
+        for una in D.unknown(s):
             features = env.phi(s,una)
             A = A + np.outer(features,features)
             b = b + features * grmax
 
     return A,b
 
-def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
+def srmax_loop(D, env, w, damping=0.001, rmax = 1.0):
     """
     Sparse rmax loop.
     """
@@ -248,7 +248,7 @@ def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
     grmax = rmax / (1.0 - env.gamma)
 
     for (s,a,r,ns,na) in D:
-        if track.known_pair(s,a) and track.known_state(ns):
+        if D.known_pair(s,a) and D.known_state(ns):
             features = env.phi(s, a, sparse=True, format='csr')
             next = env.linear_policy(w, ns)
             newfeatures = env.phi(ns, next, sparse=True, format='csr')
@@ -256,7 +256,7 @@ def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
             T = sp.kron(features, nf.T)
             A = A + T
             b = b + features * r 
-        elif track.known_pair(s,a):
+        elif D.known_pair(s,a):
             features = env.phi(s, a, sparse=True, format='csr')
             T = sp.kron(features, features.T)
             A = A + T
@@ -266,7 +266,7 @@ def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
             T = sp.kron(features, features.T)
             A = A + T
             b = b + features * grmax
-        for una in track.unknown(s):
+        for una in D.unknown(s):
             features = env.phi(s, una, sparse=True, format='csr')
             T = sp.kron(features, features.T)
             A = A + T
@@ -274,7 +274,7 @@ def srmax_loop(D, env, w, track, damping=0.001, rmax = 1.0):
 
     return A,b
 
-def drmax_loop(D, env, w, track, damping=0.001, rmax=1.0):
+def drmax_loop(D, env, w, damping=0.001, rmax=1.0):
     """
     Dictionary rmax loop.
     """
@@ -285,7 +285,7 @@ def drmax_loop(D, env, w, track, damping=0.001, rmax=1.0):
 
 
     for (s,a,r,ns,na) in D:
-        if track.known_pair(s,a) and track.known_state(ns):
+        if D.known_pair(s,a) and D.known_state(ns):
             features = env.phi(s, a, sparse=True, format='rawdict')
             next = env.linear_policy(w, ns)
             newfeatures = env.phi(ns, next, sparse=True, format='rawdict')
@@ -299,7 +299,7 @@ def drmax_loop(D, env, w, track, damping=0.001, rmax=1.0):
                     A[i,j] = A.get((i,j), 0) +  v1 * v2
                 b[i] = b.get(i,0) + v1 * r
 
-        elif track.known_pair(s,a):
+        elif D.known_pair(s,a):
             features = env.phi(s, a, sparse=True, format='rawdict')
             for i,v1 in features.items():
                 for j,v2 in features.items():
@@ -313,7 +313,7 @@ def drmax_loop(D, env, w, track, damping=0.001, rmax=1.0):
                     A[i,j] = A.get((i,j), 0) + v1 * v2
                 b[i] = b.get(i,0) + v1 * grmax
 
-        for una in track.unknown(s):
+        for una in D.unknown(s):
             features = env.phi(s, una, sparse=True, format='rawdict')
             for i,v1 in features.items():
                 for j,v2 in features.items():
@@ -382,51 +382,47 @@ def SparseLSTDQ(D,env,w,damping=0.001):
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 
-def LSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
+def LSTDQRmax(D, env, w, damping=0.001, rmax = 1.0):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
-    track : an object that records what is known
     damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
     rmax : the maximum reward
     """
-    A,b = rmax_loop(D,env,w,track,damping,rmax)
+    A,b = rmax_loop(D,env,w,damping,rmax)
     w,info = solve(A,b,method="pinv")
     return A,b,w,info
 
-def SparseLSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
+def SparseLSTDQRmax(D, env, w, damping=0.001, rmax = 1.0):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
-    track : an object that records what is known
     damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
     rmax : the maximum reward
     """
-    A,b = srmax_loop(D,env,w,track,damping,rmax)
+    A,b = srmax_loop(D,env,w,damping,rmax)
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 
-def FastLSTDQRmax(D, env, w, track, damping=0.001, rmax = 1.0):
+def FastLSTDQRmax(D, env, w, damping=0.001, rmax = 1.0):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
-    track : an object that records what is known
     damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
     rmax : the maximum reward
     """
-    A,b = drmax_loop(D,env,w,track,damping,rmax)
+    A,b = drmax_loop(D,env,w,damping,rmax)
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
   
-def ParallelLSTDQRmax(D,env,w,track,damping=0.001,rmax=1.0,ncpus=None):
+def ParallelLSTDQRmax(D,env,w,damping=0.001,rmax=1.0,ncpus=None):
     """
     D : source of samples (s,a,r,s',a')
     env: environment contianing k,phi,gamma
     w : weights for the linear policy evaluation
-    track : an object that records what is known
     damping : keeps the result relatively stable (solves some difficulties with oscillation if A is singular)
     rmax : the maximum reward
     ncpus : the number of cpus to use
@@ -440,7 +436,7 @@ def ParallelLSTDQRmax(D,env,w,track,damping=0.001,rmax=1.0,ncpus=None):
     indx = chunk(len(D),nprocess)
     results = []
     for (i,j) in indx:
-        r = pool.apply_async(drmax_loop,(D[i:j],env,w,track,0.0,rmax)) # note that damping needs to be zero here
+        r = pool.apply_async(drmax_loop,(D[i:j],env,w,0.0,rmax)) # note that damping needs to be zero here
         results.append(r)
         
     k = len(w)
@@ -502,6 +498,6 @@ if __name__ == '__main__':
     gw = SparseGridworld8(nrows = 5, ncols = 5, endstates = [0], walls = [])
     t = pickle.load(open("/Users/stober/wrk/lspi/bin/rmax_trace.pck"))
     policy0 = np.zeros(gw.nfeatures())
-    track = TrackKnown(gw.nstates, gw.nactions, 1)
-    compare(LSTDQRmax, ParallelLSTDQRmax, t, gw, policy0, track)
+    track = TrackKnown(t, gw.nstates, gw.nactions, 1)
+    compare(LSTDQRmax, ParallelLSTDQRmax, track, gw, policy0)
  

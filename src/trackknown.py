@@ -8,6 +8,7 @@ L. Li, M. L. Littman, and C. R. Mansley, "Online exploration in least-squares po
 '''
 import numpy as np
 import pdb
+import copy
 
 class TrackKnown:
     """
@@ -15,30 +16,36 @@ class TrackKnown:
 
     TODO: Generalize by adding epsilon and kd tree or approximation methods.
     """
-    def __init__(self, nstates, nactions, mcount):
+    def __init__(self, samples, nstates, nactions, mcount):
         self.nstates = nstates
         self.nactions = nactions
         self.mcount = mcount
         self.counts = np.zeros((nstates, nactions))
-
-    def init(self, samples):
+        self.samples = samples
         for (s,a,r,ns,na) in samples:
             self.counts[s,a] += 1
 
-    def uniq(self, samples):
-        # this is not necessarily correct
-        return list(set(samples))
+    def __iter__(self):
+        return iter(self.samples)
 
-    def resample(self, samples, trace, take_all=False):
+    def __getitem__(self,key):
+        new = copy.copy(self) # note: only need a shallow copy here *do not modify the slice object*
+        new.samples = self.samples[key]
+        return new
+
+    def __len__(self):
+        return len(self.samples)
+
+    def extend(self, samples, take_all=False):
         if take_all:
-            for (s,a,r,ns,na) in trace:
+            for (s,a,r,ns,na) in samples:
                 self.counts[s,a] += 1
-                samples.append((s,a,r,ns,na))
+                self.samples.append((s,a,r,ns,na))
         else:
-            for (s,a,r,ns,na) in trace:
+            for (s,a,r,ns,na) in samples:
                 if self.counts[s,a] < self.mcount:
                     self.counts[s,a] += 1
-                    samples.append((s,a,r,ns,na))
+                    self.samples.append((s,a,r,ns,na))
 
     def all_known(self):
         if (self.counts >= self.mcount).all():
