@@ -13,3 +13,4 @@ environments. Both lspi.py and lstdq.py contain example code using a
 simple chainworld environment from the original paper (included in the
 gridworld package).
 
+My utils package is also required: https://github.com/stober/utils.
