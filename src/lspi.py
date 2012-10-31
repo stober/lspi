@@ -61,7 +61,7 @@ class Diagnostics:
 
 @timerflag
 @debugflag
-def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show = False, resample_epsilon = 0.1, rmax = 1.0):
+def LSPIRmax(D, epsilon, env, policy0, method = "dense", maxiter = 10, resample_size = 1000, show = False, resample_epsilon = 0.1, rmax = 1.0):
     current = policy0
     all_policies = [current]
 
@@ -78,7 +78,12 @@ def LSPIRmax(D, epsilon, env, policy0, maxiter = 10, resample_size = 1000, show 
         all_policies.append(current)
 
         start_time = time.time()
-        A,b,current,info = ParallelLSTDQRmax(track, env, current, rmax=rmax)
+        if method is "dense":
+            A,b,current,info = LSTDQRmax(track, env, current, rmax=rmax)
+        elif method is "parallel":
+            A,b,current,info = ParallelLSTDQRmax(track, env, current, rmax=rmax)
+        else:
+            raise ValueError, "Unknown LSTDQ method!"
         end_time = time.time()
         print "Loop time: ", end_time - start_time
 

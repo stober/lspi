@@ -25,12 +25,13 @@ import numpy.linalg as la
 
 # Choose what tests to run.
 test_rbf = False
+test_rbfrmax = True
 test_scale= False
 test_chainwalk = False
 test_sarsa = False
 test_lspi = False
 test_walls = False
-test_pca = True
+test_pca = False
 test_rmax = False
 
 if test_rmax:
@@ -108,7 +109,7 @@ if test_scale:
 
     policy0 = np.zeros(gw.nfeatures())
     #w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=1, method="alt", debug = False, timer = True, show=False, format="csr")
-    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=True, format="csr",ncpus=6)
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=True,ncpus=6)
     #w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, format="csr")
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)    
@@ -117,15 +118,28 @@ if test_scale:
 
 if test_rbf:
     walls = wall_pattern(9,9)
-    gw = RBFGridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0], size=16, nrbf=15)
+    gw = RBFGridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0], nrbf=15)
     # gw = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
     t = gw.trace(1000)
     policy0 = np.zeros(gw.nfeatures())
-    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, format="csr",ncpus=6)
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, ncpus=6)
     pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
     gw.set_arrows(pi)    
     gw.background()
     gw.mainloop()
+
+if test_rbfrmax:
+    walls = wall_pattern(9,9)
+    gw = GridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0]) #, nrbf=15)
+    # gw = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
+    t = gw.trace(1000)        
+    policy0 = np.zeros(gw.nfeatures())
+    w0, weights0 = LSPIRmax(t, 0.005, gw, policy0, method = "dense", maxiter=1000, show=True, resample_epsilon = 0.1, rmax=1000)
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
+    gw.background()
+    gw.mainloop()
+
 
 if test_pca:
     endstates = [32, 2016, 1024, 1040, 1056, 1072]
