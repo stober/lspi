@@ -13,7 +13,8 @@ from gridworld.chainwalk import Chainwalk
 from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
 from gridworld.gridworld8 import wall_pattern
-from gridworld.gridworldgui import GridworldGui, RBFGridworldGui
+from gridworld.gridworld8 import ObserverGridworld
+from gridworld.gridworldgui import GridworldGui, RBFGridworldGui, ObserverGridworldGui
 from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
@@ -25,14 +26,16 @@ import numpy.linalg as la
 
 # Choose what tests to run.
 test_rbf = False
-test_rbfrmax = True
+test_comb = False
 test_scale= False
 test_chainwalk = False
 test_sarsa = False
 test_lspi = False
 test_walls = False
-test_pca = False
+test_fakepca = False
 test_rmax = False
+test_realpca = True
+
 
 if test_rmax:
     gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
@@ -128,7 +131,7 @@ if test_rbf:
     gw.background()
     gw.mainloop()
 
-if test_rbfrmax:
+if test_comb:
     walls = wall_pattern(9,9)
     # gw = GridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0]) #, nrbf=15)
     # gw = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
@@ -161,7 +164,7 @@ if test_rbfrmax:
     import pylab
     pylab.show()
 
-if test_pca:
+if test_fakepca:
     endstates = [32, 2016, 1024, 1040, 1056, 1072]
     gw = GridworldGui(nrows=32,ncols=64,endstates=endstates,walls=[])
     try:
@@ -179,5 +182,21 @@ if test_pca:
     gw.set_arrows(pi)    
     gw.background()
     gw.mainloop()
-    
 
+if test_realpca:
+    import pdb
+    pdb.set_trace()
+    ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/observations.npy", "/Users/stober/wrk/lspi/bin/states.npy", walls=None)
+    try:
+        t = pickle.load(open("real_pca_trace.pck"))
+    except:
+        t = ogw.trace(100000)
+        pickle.dump(t, open("real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+    policy0 = np.zeros(ogw.nfeatures())
+    w0, weights0 = LSPI(t, 0.003, ogw, policy0, maxiter=100, method="dense", debug = False, timer = True, show=True, ncpus=6)
+    pickle.dump(w0, open("weights.pck","w"), pickle.HIGHEST_PROTOCOL)    
+    pi = [ogw.linear_policy(w0,s) for s in range(ogw.nstates)]
+    ogw.set_arrows(pi)    
+    ogw.background()
+    ogw.mainloop()
