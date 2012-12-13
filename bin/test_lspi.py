@@ -14,7 +14,7 @@ from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
 from gridworld.gridworld8 import wall_pattern
 from gridworld.gridworld8 import ObserverGridworld
-from gridworld.gridworldgui import GridworldGui, RBFGridworldGui, ObserverGridworldGui
+from gridworld.gridworldgui import GridworldGui, RBFGridworldGui, ObserverGridworldGui,AliasGridworldGui
 from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
@@ -23,6 +23,7 @@ from lspi import LSPIRmax
 from td import Sarsa
 import cPickle as pickle
 import numpy.linalg as la
+from utils import create_cluster_colors_rgb
 
 # Choose what tests to run.
 test_rbf = False
@@ -34,8 +35,8 @@ test_lspi = False
 test_walls = False
 test_fakepca = False
 test_rmax = False
-test_realpca = True
-
+test_realpca = False #True
+test_alias = True
 
 if test_rmax:
     gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
@@ -186,17 +187,96 @@ if test_fakepca:
 if test_realpca:
     import pdb
     pdb.set_trace()
-    ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/observations.npy", "/Users/stober/wrk/lspi/bin/states.npy", walls=None)
+    endstates = [32, 2016, 1024, 1040, 1056, 1072]
+    ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/observations4.npy", "/Users/stober/wrk/lspi/bin/states.npy", endstates = endstates, walls=None)
     try:
         t = pickle.load(open("real_pca_trace.pck"))
     except:
         t = ogw.trace(100000)
         pickle.dump(t, open("real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
 
-    policy0 = np.zeros(ogw.nfeatures())
-    w0, weights0 = LSPI(t, 0.003, ogw, policy0, maxiter=100, method="dense", debug = False, timer = True, show=True, ncpus=6)
-    pickle.dump(w0, open("weights.pck","w"), pickle.HIGHEST_PROTOCOL)    
-    pi = [ogw.linear_policy(w0,s) for s in range(ogw.nstates)]
-    ogw.set_arrows(pi)    
+    # rs = [r[2] for r in t]
+
+    # s = np.zeros(ogw.nstates)
+    # for r in t:
+    #     s[r[0]] += 1
+
+  
+    # print s[0],s[-1]
+    # print np.max(s),np.min(s)
+
+    obs = [ogw.observe(s)[3] for s in range(ogw.nstates)]
+    #s = np.zeros(ogw.nstates)
+    #s[:ogw.nstates/2] = 10.0
+    ogw.set_heatmap(obs)
     ogw.background()
     ogw.mainloop()
+
+if test_alias:
+
+    endstates = [32, 2016, 1024, 1040, 1056, 1072]
+
+    dups = pickle.load(open("duplicates.pck"))
+
+    import networkx as nx
+    g = nx.Graph()
+    for d,v in dups:
+        g.add_edge(d,v)
+    cc = nx.connected_components(g)
+    aliases = {}
+    for c in cc:
+        aliases[min(c)] = set(c)
+    print aliases
+
+
+    #gw = AliasGridworldGui(nrows=32,ncols=64,endstates=endstates,walls=[],aliases=aliases)
+    gw = GridworldGui(nrows=32,ncols=64,endstates=endstates,walls=[])
+    try:
+        t = pickle.load(open("pca_trace.pck"))
+    except:
+        t = gw.trace(100000)
+        pickle.dump(t,open("pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+
+    policy0 = np.zeros(gw.nfeatures())
+    nclusters = len(aliases)
+    colors = create_cluster_colors_rgb(nclusters,False)
+    print colors
+
+    colormap = {}
+    for i,cc in enumerate(aliases.values()):
+        for s in cc:
+            colormap[s] = colors[i]
+
+    w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="sparse", debug = False, timer = True, show=True, ncpus=6)
+    #w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter = 100000, show = True, resample_epsilon = 0.1, rmax = 1000)
+    # w0, weights0 = LSPIRmax(t, 0.003, gw, policy0, maxiter=100)
+    # w0, weights0 = LSPI(t, 0.005, gw, policy0, maxiter=10, method="parallel", debug = False, timer = True, show=True, format="csr",ncpus=6)
+    try:
+        pickle.dump(w0,open("weights.pck","w"),pickle.HIGHEST_PROTOCOL)
+    except:
+        print "Save failed!"
+
+    pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
+    gw.set_arrows(pi)    
+    gw.background()
+    gw.mainloop()
+
+    # print max([len(cc) for cc in aliases.values()])
+    # gw.set_colormap(colormap)
+    # gw.background()
+    # gw.mainloop()
+
+    # print ogw.phi(0,0)
+    # print ogw.phi(0,1)
+    # print np.sum(rs)
+    # import sys
+    # sys.exit()
+
+    # policy0 = np.zeros(ogw.nfeatures())
+    # w0, weights0 = LSPI(t, 0.00001, ogw, policy0, maxiter=100, method="dense", debug = False, timer = True, show=True, ncpus=6)
+    # pickle.dump(w0, open("weights.pck","w"), pickle.HIGHEST_PROTOCOL)    
+    # pi = [ogw.linear_policy(w0,s) for s in range(ogw.nstates)]
+    # ogw.set_arrows(pi)    
+    # ogw.background()
+    # ogw.mainloop()    

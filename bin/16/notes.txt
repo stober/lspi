@@ -1,0 +1,17 @@
+# algorithm for pose generation
+
+resolution = 16.0
+srange = np.arange(-np.pi, np.pi, np.pi / resolution)
+trange = np.arange(0, np.pi, np.pi / resolution)
+
+dsas = [[0,0,0],
+        [np.pi,0,0],
+        [0.5*np.pi,0,-np.pi],
+        [0.5*np.pi,0,-0.5*np.pi],
+        [0.5*np.pi,0,0],
+        [0.5*np.pi,0,0.5*np.pi]]
+
+for i in trange:
+    for j in srange:
+        req.euler.yaw = i
+        req.euler.roll = j
