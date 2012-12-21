@@ -107,8 +107,8 @@ def LSPIRmax(D, epsilon, env, policy0, method = "dense", maxiter = 10, resample_
 
     return current, all_policies
 
-@timerflag
-@debugflag
+#@timerflag
+#@debugflag
 def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, ncpus=None):
 
     current = policy0

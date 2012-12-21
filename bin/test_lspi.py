@@ -14,7 +14,7 @@ from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
 from gridworld.gridworld8 import wall_pattern
 from gridworld.gridworld8 import ObserverGridworld
-from gridworld.gridworldgui import GridworldGui, RBFGridworldGui, ObserverGridworldGui,AliasGridworldGui
+from gridworld.gridworldgui import GridworldGui, RBFGridworldGui, ObserverGridworldGui, AliasGridworldGui, RBFObserverGridworldGui
 from lspi import LSTDQ
 from lspi import LSPI
 from lspi import FastLSTDQ
@@ -23,7 +23,9 @@ from lspi import LSPIRmax
 from td import Sarsa
 import cPickle as pickle
 import numpy.linalg as la
-from utils import create_cluster_colors_rgb
+from utils import create_cluster_colors_rgb, find_duplicates
+
+workspace = "/Users/stober/wrk/lspi/bin"
 
 # Choose what tests to run.
 test_rbf = False
@@ -35,8 +37,15 @@ test_lspi = False
 test_walls = False
 test_fakepca = False
 test_rmax = False
-test_realpca = False #True
-test_alias = True
+test_realpca = True #True
+test_alias = False
+
+def compare_all_phi(gw):
+    data = []
+    for s in gw.states:
+        for a in gw.actions:
+            data.append(gw.phi(s,a))
+    print find_duplicates(data).next() # stop iteration?
 
 if test_rmax:
     gw = GridworldGui(nrows = 5, ncols = 5, endstates = [0], walls = [])
@@ -186,14 +195,20 @@ if test_fakepca:
 
 if test_realpca:
     import pdb
-    pdb.set_trace()
-    endstates = [32, 2016, 1024, 1040, 1056, 1072]
-    ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/observations4.npy", "/Users/stober/wrk/lspi/bin/states.npy", endstates = endstates, walls=None)
+    #pdb.set_trace()
+    #endstates = [32, 2016, 1024, 1040, 1056, 1072]
+    endstates = [16,256,264,272,280,496]
+    #endstates = [0] # TODO find proper endstates
+    # ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None)
+    ogw = RBFObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None)
+    #ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/32/observations4.npy", "/Users/stober/wrk/lspi/bin/32/states.npy", endstates = endstates, walls=None)
+    #ogw = GridworldGui(nrows=16,ncols=32,endstates = endstates, walls=[])
     try:
-        t = pickle.load(open("real_pca_trace.pck"))
+        #raise Exception # force a trace regeneration
+        t = pickle.load(open(workspace + "/traces/real_pca_trace.pck"))
     except:
         t = ogw.trace(100000)
-        pickle.dump(t, open("real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+        pickle.dump(t, open(workspace + "/traces/real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
 
     # rs = [r[2] for r in t]
 
@@ -201,14 +216,25 @@ if test_realpca:
     # for r in t:
     #     s[r[0]] += 1
 
-  
+    # Sigh - not working - need to try tabular form (Tiling wrong?)
+
+    #print t[:100]
+    pdb.set_trace()
+    policy0 = np.zeros(ogw.nfeatures())
+    w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="dense", show=True, ncpus=6)
+    #pi = [ogw.linear_policy(w0,s) for s in range(ogw.nstates)]
+    #ogw.set_arrows(pi)    
     # print s[0],s[-1]
     # print np.max(s),np.min(s)
 
-    obs = [ogw.observe(s)[3] for s in range(ogw.nstates)]
-    #s = np.zeros(ogw.nstates)
-    #s[:ogw.nstates/2] = 10.0
-    ogw.set_heatmap(obs)
+    # compare_all_phi(ogw)
+
+    # obs = [ogw.observe(s)[1] for s in range(ogw.nstates)]
+    # print obs
+    # s = np.zeros(ogw.nstates)
+    # s[:ogw.nstates/2] = 10.0
+    # ogw.set_heatmap(obs)
+    
     ogw.background()
     ogw.mainloop()
 
