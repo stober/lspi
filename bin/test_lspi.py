@@ -9,6 +9,7 @@ Description: Test code for LSPI.
 import pdb
 import sys
 import numpy as np
+import functools
 from gridworld.chainwalk import Chainwalk
 from gridworld.gridworld8 import SparseGridworld8 as Gridworld
 from gridworld.gridworld8 import SparseRBFGridworld8 as Gridworld2
@@ -39,6 +40,7 @@ test_fakepca = False
 test_rmax = False
 test_realpca = True #True
 test_alias = False
+test_complete = False
 
 def compare_all_phi(gw):
     data = []
@@ -197,18 +199,41 @@ if test_realpca:
     import pdb
     #pdb.set_trace()
     #endstates = [32, 2016, 1024, 1040, 1056, 1072]
-    endstates = [16,256,264,272,280,496]
+    #endstates = [16,256,264,272,280,496]
+    endstates = [16]
     #endstates = [0] # TODO find proper endstates
     # ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None)
-    ogw = RBFObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None)
-    #ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/32/observations4.npy", "/Users/stober/wrk/lspi/bin/32/states.npy", endstates = endstates, walls=None)
-    #ogw = GridworldGui(nrows=16,ncols=32,endstates = endstates, walls=[])
+    # just isnt' working for state 16
+    # nrbf 40 works best
+    ogw = RBFObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/20comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None, nrbf=80)
+    # ogw.load_features('rbf_obs_features.pck')
+    # ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/32/observations4.npy", "/Users/stober/wrk/lspi/bin/32/states.npy", endstates = endstates, walls=None)
+    # ogw = GridworldGui(nrows=16,ncols=32,endstates = endstates, walls=[])
     try:
         #raise Exception # force a trace regeneration
-        t = pickle.load(open(workspace + "/traces/real_pca_trace.pck"))
+        t = pickle.load(open(workspace + "/traces/complete_trace.pck"))
     except:
-        t = ogw.trace(100000)
-        pickle.dump(t, open(workspace + "/traces/real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+        pass
+        #t = ogw.trace(100000)
+        #pickle.dump(t, open(workspace + "/traces/real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
+
+    def modify_endstates(t,old_endstates, new_endstates):
+        new_trace = []
+        for r in t:
+            new = list(r)
+            if r[3] in old_endstates:
+                new[2] = 0.0
+            if r[3] in new_endstates:
+                new[2] = 1000.0
+            new_trace.append(new)
+        return new_trace
+        
+        
+    old_endstates = [16,256,264,272,280,496]
+    t = modify_endstates(t,old_endstates,endstates)
+
+    # print [r for r in t if r[2] == 1.0]
+    # raise Exception
 
     # rs = [r[2] for r in t]
 
@@ -219,11 +244,40 @@ if test_realpca:
     # Sigh - not working - need to try tabular form (Tiling wrong?)
 
     #print t[:100]
-    pdb.set_trace()
-    policy0 = np.zeros(ogw.nfeatures())
-    w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="dense", show=True, ncpus=6)
-    #pi = [ogw.linear_policy(w0,s) for s in range(ogw.nstates)]
-    #ogw.set_arrows(pi)    
+    # pdb.set_trace()
+
+    #ogw.save_features('rbf_obs_features.pck')
+    #policy0 = np.zeros(ogw.nfeatures())
+    #w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="sparse", show=True, ncpus=6)
+    #fp = open("rbf_obs_weights.pck","w")
+    #pickle.dump((w0,weights0), fp, pickle.HIGHEST_PROTOCOL)
+
+    if False:
+        policy = functools.partial(ogw.linear_policy,policy0)
+
+        pi = [ogw.linear_policy(policy0,s) for s in range(ogw.nstates)]
+        ogw.set_arrows(pi)    
+
+
+        result = ogw.test(policy)
+        sucesses = []
+        failures = []
+        for (i,r) in result.items():
+            if r:
+                sucesses.append(i)
+            else:
+                failures.append(i)
+
+        print sucesses
+        print failures
+
+        pi = [ogw.linear_policy(policy0,s) for s in range(ogw.nstates)]
+        ogw.set_arrows(pi)   
+        s = np.zeros(ogw.nstates)
+        for (l,i) in result.items():
+            s[l] = i
+        ogw.set_heatmap(s) 
+    
     # print s[0],s[-1]
     # print np.max(s),np.min(s)
 
@@ -306,3 +360,10 @@ if test_alias:
     # ogw.set_arrows(pi)    
     # ogw.background()
     # ogw.mainloop()    
+
+if test_complete:
+
+    endstates = [16,256,264,272,280,496]
+    ogw = RBFObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None,nrbf=40)
+    t = ogw.complete_trace()
+    pickle.dump(t, open('traces/complete_trace.pck','w'),pickle.HIGHEST_PROTOCOL)
