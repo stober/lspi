@@ -368,6 +368,7 @@ def FastLSTDQ(D,env,w,damping=0.001):
     damping : keeps the result relatively stable 
     """
     A,b = dict_loop(D,env,w,damping)
+    print "Feature Sparsity: ", env.get_sparsity()
     w,info = solve(A,b,method="spsolve")
     return A,b,w,info
 

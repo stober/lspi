@@ -217,6 +217,10 @@ if test_realpca:
         #t = ogw.trace(100000)
         #pickle.dump(t, open(workspace + "/traces/real_pca_trace.pck","w"), pickle.HIGHEST_PROTOCOL)
 
+    #pdb.set_trace()
+    #print ogw.phi(0,0)
+    #raise Exception
+
     def modify_endstates(t,old_endstates, new_endstates):
         new_trace = []
         for r in t:
@@ -247,8 +251,9 @@ if test_realpca:
     # pdb.set_trace()
 
     #ogw.save_features('rbf_obs_features.pck')
-    #policy0 = np.zeros(ogw.nfeatures())
-    #w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="sparse", show=True, ncpus=6)
+    policy0 = np.zeros(ogw.nfeatures())
+    pdb.set_trace()
+    w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="sparse", show=True, ncpus=6)
     #fp = open("rbf_obs_weights.pck","w")
     #pickle.dump((w0,weights0), fp, pickle.HIGHEST_PROTOCOL)
 
@@ -288,7 +293,9 @@ if test_realpca:
     # s = np.zeros(ogw.nstates)
     # s[:ogw.nstates/2] = 10.0
     # ogw.set_heatmap(obs)
-    
+    # pdb.set_trace()
+    # ogw.phi(0,0,sparse=False)
+
     ogw.background()
     ogw.mainloop()
 
