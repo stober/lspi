@@ -200,7 +200,7 @@ if test_realpca:
     #pdb.set_trace()
     #endstates = [32, 2016, 1024, 1040, 1056, 1072]
     #endstates = [16,256,264,272,280,496]
-    endstates = [16]
+    endstates = [272] # [16]
     #endstates = [0] # TODO find proper endstates
     # ogw = ObserverGridworldGui("/Users/stober/wrk/lspi/bin/16/5comp.npy", "/Users/stober/wrk/lspi/bin/16/states.npy", endstates = endstates, walls=None)
     # just isnt' working for state 16
@@ -252,10 +252,11 @@ if test_realpca:
 
     #ogw.save_features('rbf_obs_features.pck')
     policy0 = np.zeros(ogw.nfeatures())
-    pdb.set_trace()
-    w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="sparse", show=True, ncpus=6)
+    #w0, weights0 = LSPI(t, 0.005, ogw, policy0, maxiter=50, method="sparse", show=True, ncpus=6)
+
     #fp = open("rbf_obs_weights.pck","w")
     #pickle.dump((w0,weights0), fp, pickle.HIGHEST_PROTOCOL)
+    (w0, weights) = pickle.load(open("rbf_obs_weights.pck"))
 
     if False:
         policy = functools.partial(ogw.linear_policy,policy0)
@@ -296,8 +297,32 @@ if test_realpca:
     # pdb.set_trace()
     # ogw.phi(0,0,sparse=False)
 
-    ogw.background()
-    ogw.mainloop()
+    pdb.set_trace()
+    traces = ogw.evaluate_func_policy(ogw.perfect_policy)
+    pickle.dump(traces, open("perf_pca_traces_center.pck","w"),pickle.HIGHEST_PROTOCOL)
+    traces = pickle.load(open("perf_pca_traces_center.pck"))
+    from dtw import edit_distance_vc
+
+    ematrix = np.zeros((512,512))
+    for (i,t) in enumerate(traces):
+        for (j,s) in enumerate(traces):
+                ematrix[i,j] = edit_distance_vc([e[1] for e in t], [l[1] for l in s], (1.0, 1.0, 2.0))
+
+    # print ematrix
+    pickle.dump(ematrix, open("ematrix4.pck","w"), pickle.HIGHEST_PROTOCOL)
+    ematrix = pickle.load(open('ematrix4.pck'))
+    # from mds import mds
+    # pdb.set_trace()
+    # y,s = mds(ematrix)
+    # #from utils import scatter
+    # #scatter(y[:,0],y[:,1])
+    # import pylab
+    # pylab.plot(y[:,0],y[:,1])
+    # pylab.savefig('test3.png')
+
+
+    # ogw.background()
+    # ogw.mainloop()
 
 if test_alias:
 
