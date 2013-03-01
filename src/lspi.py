@@ -112,7 +112,8 @@ def LSPIRmax(D, epsilon, env, policy0, method = "dense", maxiter = 10, resample_
 def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, ncpus=None):
 
     current = policy0
-    all_policies = [current]
+    #all_policies = [current]
+    all_policies = []
 
     if show:
         diagnostics = Diagnostics(env)

@@ -12,12 +12,13 @@ import pylab
 import numpy.linalg as la
 from mds import mds
 from multiprocessing import Pool
+from isomap import isomap
 
 if True:
     #ematrix = pickle.load(open("ematrix4.pck"))
 
     traces = pickle.load(open("perf_pca_traces_center.pck"))
-    from dtw import dtw_distance
+    from dtw import non_dtw_distance
 
     # taken from gridworld8
     actions = [np.array((-1,0)),np.array((-1,-1)),
@@ -34,13 +35,21 @@ if True:
         """
         Real costs for actions.
         """
-        return adistances[a,b]
+        if a != b and a == None:
+            return la.norm(b)
+        elif a != b and b == None:
+            return la.norm(a)
+        elif a == b:
+            return 0.0
+        else:
+            return adistances[a,b]
 
     def dtw_apply(i,j,t,s):
-        return i,j,dtw_distance([e[1] for e in t], [l[1] for l in s], costf=cost_func)
+        return i,j,non_dtw_distance([e[1] for e in t], [l[1] for l in s], costf=cost_func)
 
     pool = Pool(6)
     results = []
+    traces[272] = [(272,0,0.0,272)] # fix for empty trace
     for (i,t) in enumerate(traces):
         for (j,s) in enumerate(traces):
             r = pool.apply_async(dtw_apply,(i,j,t,s))
