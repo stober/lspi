@@ -30,7 +30,6 @@ workspace = "/Users/stober/wrk/lspi/bin"
 
 # Choose what tests to run.
 test_rbf = False
-test_comb = False
 test_scale= False
 test_chainwalk = False
 test_sarsa = False
@@ -38,7 +37,7 @@ test_lspi = False
 test_walls = False
 test_fakepca = False
 test_rmax = False
-test_realpca = True #True
+test_realpca = False #True
 test_alias = False
 test_complete = False
 
@@ -142,39 +141,6 @@ if test_rbf:
     gw.set_arrows(pi)    
     gw.background()
     gw.mainloop()
-
-if test_comb:
-    walls = wall_pattern(9,9)
-    # gw = GridworldGui(nrows = 9, ncols = 9, walls = walls, endstates = [0]) #, nrbf=15)
-    # gw = Gridworld2(nrows = 9, ncols = 9, endstates = [0], walls = [], nrbf=15)
-    # t = gw.trace(1000)        
-    # policy0 = np.zeros(gw.nfeatures())
-    # w0, weights0 = LSPIRmax(t, 0.005, gw, policy0, method = "dense", maxiter=1000, show=True, resample_epsilon = 0.1, rmax=1000)
-    # w0 = pickle.load(open("weights.pck"))
-    # pi = [gw.linear_policy(w0,s) for s in range(gw.nstates)]
-    # gw.set_arrows(pi)    
-    # gw.background()
-    # pickle.dump(w0,open("weights.pck","w"), pickle.HIGHEST_PROTOCOL)
-    #    gw.mainloop()
-    # import pdb
-    # pdb.set_trace()
-    # traces = gw.evaluate_policy(w0)
-    # pickle.dump(traces, open("traces.pck","w"),pickle.HIGHEST_PROTOCOL)
-    traces = pickle.load(open("traces.pck"))
-    from dtw import edit_distance
-
-    ematrix = np.zeros((49,49))
-    for (i,t) in enumerate(traces):
-        for (j,s) in enumerate(traces):
-                ematrix[i,j] = edit_distance([e[1] for e in t], [l[1] for l in s])
-
-    print ematrix
-    from mds import mds
-    y,s = mds(ematrix)
-    from utils import scatter
-    scatter(y[:,0],y[:,1])
-    import pylab
-    pylab.show()
 
 if test_fakepca:
     endstates = [32, 2016, 1024, 1040, 1056, 1072]
