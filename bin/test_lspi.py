@@ -25,8 +25,9 @@ from td import Sarsa
 import cPickle as pickle
 import numpy.linalg as la
 from utils import create_cluster_colors_rgb, find_duplicates
+import os
 
-workspace = "/Users/stober/wrk/lspi/bin"
+workspace = "{0}/wrk/lspi/bin".format(os.environ['HOME'])
 
 # Choose what tests to run.
 test_rbf = False
