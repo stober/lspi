@@ -109,7 +109,7 @@ def LSPIRmax(D, epsilon, env, policy0, method = "dense", maxiter = 10, resample_
 
 #@timerflag
 #@debugflag
-def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, ncpus=None):
+def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=False, ncpus=None, callback=None):
 
     current = policy0
     #all_policies = [current]
@@ -153,6 +153,10 @@ def LSPI(D, epsilon, env, policy0, method="dense", save=False, maxiter=10, show=
         # not return a solution that has minimum norm. The result could be a
         # problem never satisfying the termination criterion (even though a
         # policy has already been found).
+
+        if callback:
+            # callback if provided
+            callback(iters, current, env)
 
         for p in all_policies:
             if la.norm(p - current) < epsilon:  
