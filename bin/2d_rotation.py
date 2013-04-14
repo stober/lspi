@@ -17,7 +17,7 @@ from gridworld.gridworld8 import RBFObserverGridworld
 from lspi import LSPI
 import pylab
 from mds import mds
-from isomap import isomap
+from isomap import isomap, list_components
 from dtw import edit_distance_vc
 from utils import inscatter, scatter
 from procrustes import procrustes
@@ -65,7 +65,11 @@ def callback(iters, current, env):
             ematrix[i,j] = edit_distance_vc([e[1] for e in t], [l[1] for l in s], (1.0, 1.0, 1.2))
     pickle.dump(ematrix,open('ematrix{0}.pck'.format(iters), 'w'), pickle.HIGHEST_PROTOCOL)
     y,s,adj = isomap(ematrix)
-
+    if len(y) < 512:
+        # fallback to mds if more than 1 connected component
+        print "More than 1 CC - Falling back to MDS"
+        y,s = mds(ematrix)
+        adj = None
 
     # plot stuff later because of pylab / pygame incompat on mac
     # save embedding image - multiple formats?
@@ -79,7 +83,7 @@ def callback(iters, current, env):
     err = procrustes(gt, y)
     print "Procrustes ", err
 
-    pickle.dump((iters, err, gt, avg_reward, current, y, s, adj), open('misc{0}.pck'.format(iters)), pickle.HIGHEST_PROTOCOL)
+    pickle.dump((iters, err, gt, avg_reward, current, y, s, adj), open('misc{0}.pck'.format(iters),'w'), pickle.HIGHEST_PROTOCOL)
 
     env.save('iter{0}.png'.format(iters))
 
@@ -87,6 +91,12 @@ def callback(iters, current, env):
 if __name__ == '__main__':
 
     workspace = "{0}/wrk/lspi/bin".format(os.environ['HOME'])
+
+    if False:
+        # fix isomap issue on bad matches
+        ematrix = pickle.load(open('ematrix0.pck'))
+        y,s,adj = isomap(ematrix)
+        
 
     if True:
 
